@@ -4,10 +4,12 @@ A high performance webserver made for linux first, should eventually also be abl
 
 ## TODO
 
-- Finish request parsing and response serialization.
-- Move appropriate code into the router/server
-- Make sure that works
-- Either switch to trie, or decide to make a command buffer for the server-router interaction.
+- allow for just making the assets/public public, also update the actual website
+- htmx callbacks
+- create an client program that can be used for benchmarking
+- Probably switch to a trie
+- command buffer for the server-router interaction?
+  - Important to allow for sendfile and other things...
 
 ## Prerequisites
 
@@ -17,13 +19,14 @@ A high performance webserver made for linux first, should eventually also be abl
 
 ## Features
 
-For now there are very few features, but a lot of upcoming features.
+A prerelease version is working!
+
+- Can host a static website
+- Only allows for GET requests
 
 ### Upcoming
 
 - platform wrapper
-- proper request handling
-- proper routing
 - filesystem
 - updated filesystem and request handling with io_uring on linux to up performance
 
@@ -46,7 +49,6 @@ An request is an internal structure that can be parsed.
 ### Response
 
 An response is an internal structure that can be serialized.
-
 
 ## References
 
