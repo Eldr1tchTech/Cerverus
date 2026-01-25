@@ -4,6 +4,7 @@ A high performance webserver made for linux first, should eventually also be abl
 
 ## TODO
 
+- Update the structure and unterface to make it a lot more usable and friendly, and actually update the website to something that is on topic and showcases the server
 - allow for just making the assets/public public, also update the actual website
 - htmx callbacks
 - create an client program that can be used for benchmarking
