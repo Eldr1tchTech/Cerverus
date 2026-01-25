@@ -103,6 +103,10 @@ void server_run(server* s) {
 
         router_handle_route(s->r, req, res);
 
+        cmem_free(memory_tag_response, res->body.data);
+        cmem_free(memory_tag_response, res->headers.headers);
+        cmem_free(memory_tag_response, res);
+
         send(client_fd, response_serialize(res), 1892, 0);
         
         close(client_fd);

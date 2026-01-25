@@ -43,3 +43,21 @@ char *response_serialize(response *res)
     
     return raw_res;
 }
+
+char* content_type_val_helper(const char* ext) {
+    if (ext)
+    {
+        if (strcmp(ext + 1, "html") == 0)
+        {
+            return "text/html";
+        } else if (strcmp(ext + 1, "css") == 0)
+        {
+            return "text/css";
+        } else {
+            LOG_ERROR("content_type_val_helper - Currently unsuported file extension: %s. Returning null.", ext);
+            return NULL;
+        }
+    }
+    LOG_ERROR("content_type_val_helper - Please provide a valid char* for ext.");
+    return NULL;
+}
