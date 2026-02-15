@@ -98,19 +98,16 @@ void server_run(server* s) {
         }
 
         request* req = request_parse(buffer);
-        response* res = cmem_alloc(memory_tag_response, sizeof(response));
+        response* res;
 
         LOG_INFO("Request received.");
 
-
         profile_operation("routing", {
             router_handle_route(s->r, req, res);
-            send(client_fd, response_serialize(res), 1892, 0);
+            send(client_fd, response_serialize(res), 1982, 0);
         });
         
-        cmem_free(memory_tag_response, res->body.data);
-        cmem_free(memory_tag_response, res->headers.headers);
-        cmem_free(memory_tag_response, res);
+        request_destroy(req);
         
         close(client_fd);
     }

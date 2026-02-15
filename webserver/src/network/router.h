@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 // TODO: Change this to use a command buffer of some sort for the server?
-typedef void (*route_callback)(request* req, response* res);
+typedef void (*route_callback)(request* req, response* res, int s);
 
 typedef struct route
 {

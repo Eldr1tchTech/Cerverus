@@ -18,6 +18,15 @@ char *serialize_http_version(http_version version)
     }
 }
 
+response* response_create(int h_count, int b_size) {
+    response* new_res = cmem_alloc(memory_tag_response, sizeof(response));
+    new_res->headers.headers = cmem_alloc(memory_tag_response, h_count * sizeof(header));
+    new_res->body.data = cmem_alloc(memory_tag_response, b_size * sizeof(char));
+
+    return res;
+}
+
+
 char *response_serialize(response *res)
 {
     char *raw_res = cmem_alloc(memory_tag_response, 8192 * sizeof(char));
@@ -28,7 +37,7 @@ char *response_serialize(response *res)
     if (!version)
     {
         LOG_ERROR("response_serialize - No version value.");
-        version = "HTTP/1.1"; // or assert / log fatal
+        return NULL;
     }
 
     offset += snprintf(raw_res + offset, capacity - offset,
@@ -52,6 +61,12 @@ char *response_serialize(response *res)
         cmem_mcpy(raw_res + offset, res->body.data, res->body.body_size);
         offset += res->body.body_size;
     }
+
+    cmem_free(memory_tag_response, res->headers.headers);
+    cmem_free(memory_tag_response, res->body.data);
+    cmem_free(memory_tag_response, res);
+    res = 0;
+
     return raw_res;
 }
 

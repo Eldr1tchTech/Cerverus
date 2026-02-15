@@ -5,6 +5,7 @@ A high performance webserver made for linux first, should eventually also be abl
 ## TODO
 
 - allow for just making the assets/public public, also update the actual website
+- Graceful failing for the most part once the server has been started.
 - htmx callbacks
 - create an client program that can be used for benchmarking
 - Probably switch to a trie
@@ -33,6 +34,22 @@ A prerelease version is working!
 ## Structure
 
 First create a router structure. Then initialize a server, passing the router along. Add whatever routes you want to the router. Lastly start the server.
+
+### Flow
+
+Server: command buffer, router
+
+Server receives request to connect.
+Server checks firewall for IP and connection stuff.
+Server passes request on to router.
+Router checks in public directory if its a file request.
+  if it is, send 404
+Router then checks dynamic routes.
+The route fills out the response struct, and the command buffer.
+The router executes the command buffer.
+  Command send HTTP response
+  Send body if applicable
+  Close connection if applicable
 
 ### Router
 
