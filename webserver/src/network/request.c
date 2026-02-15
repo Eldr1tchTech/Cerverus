@@ -60,7 +60,7 @@ void parse_headers(request *req, char *raw_headers, int *header_count)
                 temp++;
             }
         }
-        return header_count;
+        return;
     }
 
     // Second pass: parse each header
@@ -105,6 +105,8 @@ request *request_parse(char *raw_req)
     char *raw_req_cpy = cmem_alloc(memory_tag_request, sizeof(char) * 4096);
     strcpy(raw_req_cpy, raw_req);
 
+    req->_raw_buff = raw_req_cpy;
+
     // STATUS LINE
     char *index = strstr(raw_req_cpy, "\r\n");
     *index = '\0';
@@ -119,8 +121,8 @@ request *request_parse(char *raw_req)
     parse_headers(NULL, raw_req_cpy, h_count);
 
     // Allocate memory for headers
-    req->headers.header_count = header_count;
-    req->headers.headers = cmem_alloc(memory_tag_request, sizeof(header) * header_count);
+    req->headers.header_count = *h_count;
+    req->headers.headers = cmem_alloc(memory_tag_request, sizeof(header) * *h_count);
 
     parse_headers(req, raw_req_cpy, NULL);
 
@@ -130,8 +132,6 @@ request *request_parse(char *raw_req)
     req->body.data = cmem_alloc(memory_tag_request, req->body.body_size * sizeof(char));
     strcpy(req->body.data, raw_req_cpy);
 
-    free(raw_req_cpy);
-
     return req;
 }
 
@@ -140,6 +140,7 @@ void request_destroy(request *req)
     cmem_free(memory_tag_request, req->request_line.URI);
     cmem_free(memory_tag_request, req->headers.headers);
     cmem_free(memory_tag_request, req->body.data);
-    cmem_free(req);
+    cmem_free(memory_tag_request, req->_raw_buff);
+    cmem_free(memory_tag_request, req);
     req = 0;
 }

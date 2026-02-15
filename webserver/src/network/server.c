@@ -11,15 +11,19 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <profiler.h>
 
 void server_destroy(server* s) {
-
+    command_buffer_destroy(s->cmd_buff);
+    cmem_free(memory_tag_server, s);
+    s = 0;
 }
 
 server* server_create(server_config s_conf) {
     server* s = cmem_alloc(memory_tag_server, sizeof(server));
 
     s->port = s_conf.port;
+    s->cmd_buff = command_buffer_create();
 
     return s;
 }
@@ -47,6 +51,7 @@ void server_run(server* s) {
         return;
     }
 
+    // TODO: Look into this...
     // Enable non-blocking mode (optional)
     // fcntl(server_fd, F_SETFL, O_NONBLOCK);
     

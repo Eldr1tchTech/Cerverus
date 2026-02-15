@@ -20,6 +20,7 @@ typedef struct header
 
 typedef struct request
 {
+    char* _raw_buff;
     struct {
         http_method method;
         char* URI;

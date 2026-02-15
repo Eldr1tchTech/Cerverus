@@ -2,13 +2,15 @@
 
 #include "core/containers/darray.h"
 #include "network_types.inl"
+#include "network/command_buffer.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 // TODO: Change this to use a command buffer of some sort for the server?
-typedef void (*route_callback)(request* req, response* res, int s);
+// For now just allow route to call net-code
+typedef void (*route_callback)(request* req, response* res);
 
 typedef struct route
 {
@@ -30,7 +32,7 @@ typedef struct router
 
 router* router_create(router_config r_conf);
 
-void router_handle_route(router* r, request* req, response* res);
+void router_handle_route(router* r, request* req, command_buffer* cmd_buff);
 
 void router_destroy(router* r);
 

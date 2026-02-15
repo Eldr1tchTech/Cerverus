@@ -19,13 +19,15 @@ router *router_create(router_config r_conf)
 }
 
 // This is a bad way to do it if sendfile is to be used.
-void router_handle_route(router *r, request *req, response *res)
+void router_handle_route(router *r, request *req, command_buffer *cmd_buff)
 {
     if (!r)
     {
         LOG_ERROR("router_handle_route - Please provide a valid router argument.");
         return;
     }
+
+    response *res = response_create(6, 1892);
 
     // 1. Check public directory
     if (r->r_conf.use_public_directory)
@@ -39,32 +41,33 @@ void router_handle_route(router *r, request *req, response *res)
                 if (file_fd != -1)
                 {
                     prep_res_for_200(file_fd, ext, res);
+                    command_buffer_add(cmd_buff, );
                 }
             }
         }
-
-        // 2. Check custom routes
-        route *routes_data = (route *)r->routes->data;
-        for (int i = 0; i < r->routes->length; i++)
-        {
-            LOG_DEBUG("attempting to match route");
-            route rt = routes_data[i];
-            if (rt.method == req->request_line.method)
-            {
-                LOG_DEBUG("method matches.");
-                if (strcmp(rt.URI, req->request_line.URI) == 0)
-                {
-                    LOG_DEBUG("URI matches.");
-
-                    profile_operation("callback", rt.callback(req, res));
-
-                    return;
-                }
-            }
-        }
-
-        r->r_conf.default_route(req, res);
     }
+
+    // 2. Check custom routes
+    route *routes_data = (route *)r->routes->data;
+    for (int i = 0; i < r->routes->length; i++)
+    {
+        LOG_DEBUG("attempting to match route");
+        route rt = routes_data[i];
+        if (rt.method == req->request_line.method)
+        {
+            LOG_DEBUG("method matches.");
+            if (strcmp(rt.URI, req->request_line.URI) == 0)
+            {
+                LOG_DEBUG("URI matches.");
+
+                profile_operation("callback", rt.callback(req, res));
+
+                return;
+            }
+        }
+    }
+
+    r->r_conf.default_route(req, res);
 }
 
 void router_destroy(router *r)

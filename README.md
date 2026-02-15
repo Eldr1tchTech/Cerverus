@@ -1,6 +1,6 @@
 # Cerverus
 
-A high performance webserver made for linux first, should eventually also be able to be used for other types of servers such as game servers. Should also include an test-suite for testing servers, so maybe even the ability to DDoS (dunno if that will flag this project). The server will be based around htmx, with it's own templating engine.
+A high performance webserver made for linux first, should eventually also be able to be used for other types of servers such as game servers. Should also include an test-suite for testing servers. The server will be based around htmx, with it's own templating engine.
 
 ## TODO
 
@@ -43,9 +43,11 @@ Server receives request to connect.
 Server checks firewall for IP and connection stuff.
 Server passes request on to router.
 Router checks in public directory if its a file request.
-  if it is, send 404
+  If its valid fill command buffer to be executed.
+  If not continue
 Router then checks dynamic routes.
-The route fills out the response struct, and the command buffer.
+  If there is a match, the callback fills the command buffer to be executed.
+  If not, it fails and sends 404.
 The router executes the command buffer.
   Command send HTTP response
   Send body if applicable
@@ -61,11 +63,11 @@ The server parses requests into structures and passes them on to the router you 
 
 ### Request
 
-An request is an internal structure that can be parsed.
+An request is an internal structure representing an request, that can be parsed.
 
 ### Response
 
-An response is an internal structure that can be serialized.
+An response is an internal structure representing an response, that can be serialized.
 
 ## References
 
@@ -74,3 +76,4 @@ Shoutout to the following people who's work has allowed for this project to be p
 - Travis Vroman
 - Nir Lichtman
 - Jacob Sorber
+- Tsoding

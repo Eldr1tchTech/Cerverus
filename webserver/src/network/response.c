@@ -23,7 +23,7 @@ response* response_create(int h_count, int b_size) {
     new_res->headers.headers = cmem_alloc(memory_tag_response, h_count * sizeof(header));
     new_res->body.data = cmem_alloc(memory_tag_response, b_size * sizeof(char));
 
-    return res;
+    return new_res;
 }
 
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "network/router.h"
+#include "network/command_buffer.h"
 
 typedef struct server_config
 {
@@ -11,6 +12,7 @@ typedef struct server
 {
     int port;
     int socket_fd;
+    command_buffer* cmd_buff;
     router* r;
 } server;
 

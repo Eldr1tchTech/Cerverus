@@ -9,6 +9,8 @@ typedef enum memory_tag {
     memory_tag_request,
     memory_tag_response,
     memory_tag_string,
+    memory_tag_queue,
+    memory_tag_command_buffer,
 } memory_tag;
 
 void* cmem_alloc(memory_tag mem_tag, size_t size);
