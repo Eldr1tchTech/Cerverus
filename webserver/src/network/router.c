@@ -40,8 +40,20 @@ void router_handle_route(router *r, request *req, command_buffer *cmd_buff)
                 int file_fd = open(asprintf("assets/public%s", req->request_line.URI), O_RDONLY);
                 if (file_fd != -1)
                 {
-                    prep_res_for_200(file_fd, ext, res);
-                    command_buffer_add(cmd_buff, );
+                    prep_res_for_200(file_fd, ext, res, false);
+                    command cmd = {
+                        .cmd_type = command_type_sendresponse,
+                        .data.sendresponse_data.res = res,
+                    };
+                    command_buffer_add(cmd_buff, &cmd);
+                    cmd.cmd_type = command_type_sendfile;
+                    cmd.data.sendfile_data.file_fd = file_fd;
+                    command_buffer_add(cmd_buff, &cmd);
+                    cmd.cmd_type = command_type_close;
+                    command_buffer_add(cmd_buff, &cmd);
+                    command_buffer_execute(command_buffer, )
+
+                    close(file_fd);
                 }
             }
         }
@@ -77,7 +89,7 @@ void router_destroy(router *r)
     r = 0;
 }
 
-void prep_res_for_file(int file_fd, const char *ext, int status_code_val, char *reason_phrase_val, response *res)
+void prep_res_for_file(int file_fd, const char *ext, int status_code_val, char *reason_phrase_val, response *res, bool fill_body)
 {
     res->status_line.version = http_version_1p1;
     res->status_line.status_code = status_code_val;
@@ -109,13 +121,16 @@ void prep_res_for_file(int file_fd, const char *ext, int status_code_val, char *
 
     res->headers.header_count = header_count;
 
-    if (res->body.data)
+    if (fill_body)
     {
-        ssize_t bytes_read = read(file_fd, res->body.data, file_stat.st_size);
-        res->body.data[file_stat.st_size] = '\0';
-    }
+        if (res->body.data)
+        {
+            ssize_t bytes_read = read(file_fd, res->body.data, file_stat.st_size);
+            res->body.data[file_stat.st_size] = '\0';
+        }
 
-    res->body.body_size = file_stat.st_size + 1;
+        res->body.body_size = file_stat.st_size + 1;
+    }
 
     close(file_fd);
     return;

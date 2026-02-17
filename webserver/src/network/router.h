@@ -37,9 +37,9 @@ void router_handle_route(router* r, request* req, command_buffer* cmd_buff);
 void router_destroy(router* r);
 
 // This does not check if the file exists
-void prep_res_for_file(int file_fd, const char* ext, int status_code_val, char* reason_phrase_val, response* res);
-#define prep_res_for_404(file_fd, ext, res) prep_res_for_file(file_fd, ext, 404, "Resource not found.", res)
-#define prep_res_for_200(file_fd, ext, res) prep_res_for_file(file_fd, ext, 200, "OK", res)
+void prep_res_for_file(int file_fd, const char* ext, int status_code_val, char* reason_phrase_val, response* res, bool fill_body);
+#define prep_res_for_404(file_fd, ext, res, fill_body) prep_res_for_file(file_fd, ext, 404, "Resource not found.", res, fill_body)
+#define prep_res_for_200(file_fd, ext, res, fill_body) prep_res_for_file(file_fd, ext, 200, "OK", res, fill_body)
 
 #define FILE_CALLBACK(callback_name, file_path, status_code_val, reason_phrase_val) \
 void callback_name(request* req, response* res) { \

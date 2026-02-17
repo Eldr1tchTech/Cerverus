@@ -46,19 +46,12 @@ bool command_buffer_execute(command_buffer *cmd_buff, int client_fd)
             break;
         // NOTE: This needs to be reviewed once windows support is added.
         case command_type_sendfile:
-            int file_fd = open(cmd->data.sendfile_data.file_name, O_RDONLY);
-            if (file_fd == -1)
-            {
-                success = false;
-                break;
-            }
-
             struct stat file_stat;
-            fstat(file_fd, &file_stat);
+            fstat(cmd->data.sendfile_data.file_fd, &file_stat);
 
-            sendfile(client_fd, file_fd, 0, file_stat.st_size);
+            sendfile(client_fd, cmd->data.sendfile_data.file_fd, 0, file_stat.st_size);
 
-            close(file_fd);
+            close(cmd->data.sendfile_data.file_fd);
             break;
         case command_type_close:
             close(client_fd);

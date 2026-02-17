@@ -18,7 +18,7 @@ typedef struct command
         struct
         {
             // TODO: Improve this, maybe take a file_fd and file_size.
-            char *file_name;
+            int file_fd;
         } sendfile_data;
         struct
         {
