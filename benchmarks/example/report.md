@@ -1,5 +1,4 @@
 # Report - v0.1.0
-## Date: 3/2/2026
 
 ## Description
 
@@ -17,7 +16,7 @@
   - Min: 0.000055s
   - 95th Percentile: 0.8s
   - 99th Percentile: 1.3s
-- Duration: 30s
+- Duration: 10s
 
 ## By URI:
 

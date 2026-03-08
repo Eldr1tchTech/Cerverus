@@ -6,10 +6,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#define MAX_RESULTS 1000000 // One-million
-
-connection_benchmark_result benchmark_results[MAX_RESULTS];
-
 client_manager *client_manager_create() {
     client_manager* c_man = cmem_alloc(memory_tag_client_manager, sizeof(client_manager));
 

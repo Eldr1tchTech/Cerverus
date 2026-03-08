@@ -1,6 +1,7 @@
 // This is the entry point for the stress test part of the testing.
 // This will start the project (bin/project) and then a client, and
 #include "stress/client_manager.h"
+#include "stress/benchmark_saving.h"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -38,9 +39,10 @@ void run_stress_tests()
         sleep(5);
 
         printf("4. Send a request, get response, save info, repeat (for a set amount of time).\n");
-        client_manager_run(c_man);
+        benchmark_result* bm_r = client_manager_run(c_man);
 
         printf("6. Save results into a file.\n");
+        write_benchmark(bm_r);
     }
 }
 
