@@ -4,9 +4,7 @@ A high performance webserver made for linux first, should eventually also be abl
 
 ## TODO
 
-- Outlined tests
-  - Up Next: finish a format for 
-- Add an table that tracks performance over time for the project
+- Add an table that tracks performance over time for the project (stress testing is mostly there, but does still not properly work/store values)
 - Dynamic routes
 - Trie for routing
 - Other file formats (mp4/mp3/etc.)

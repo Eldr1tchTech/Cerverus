@@ -1,28 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C-Server | High Performance</title>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cerverus</title>
+
+    <style>
+        :root {
+            --bg: #0f1115;
+            --fg: #e6e6e6;
+            --accent: #5eead4;
+            --muted: #9ca3af;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+        }
+
+        main {
+            max-width: 700px;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+
+        p {
+            color: var(--muted);
+            margin: 0.5rem 0;
+        }
+
+        footer {
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            color: var(--muted);
+        }
+
+        code {
+            background: #1a1d24;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
-    <nav>
-        <div class="logo">C-Server<span>_</span></div>
-        <ul>
-            <li><a href="index.html" class="active">Home</a></li>
-            <li><a href="features.html">Features</a></li>
-            <li><a href="architecture.html">Architecture</a></li>
-        </ul>
-    </nav>
 
-    <header class="hero">
-        <h1>Built for Speed. <br>Written in <span class="highlight">C</span>.</h1>
-        <p>A lightweight, multi-threaded HTTP server with zero dependencies and a tiny memory footprint.</p>
-        <div class="cta-group">
-            <a href="features.html" class="btn primary">View Features</a>
-            <code class="clone-cmd">git clone https://github.com/youruser/c-server</code>
-        </div>
-    </header>
+<main>
+    <h1>Cerverus</h1>
+
+    <p>A minimal high-performance webserver written in <code>C</code>.</p>
+    <p>Designed for speed, simplicity, and modern hypermedia.</p>
+
+    <footer>
+        Powered by Cerverus
+    </footer>
+</main>
+
 </body>
 </html>
