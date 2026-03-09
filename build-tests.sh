@@ -15,3 +15,7 @@ if [ $ERRORLEVEL -ne 0 ]
 then
 echo "Error:"$ERRORLEVEL && exit
 fi
+
+echo "Killing previous tasks..."
+
+pkill -f './project' || killall project 2>/dev/null
