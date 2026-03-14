@@ -14,8 +14,7 @@
 
 void random_image_provider_callback(request *req, int client_fd)
 {
-    req->request_line.URI += 5;
-    int file_fd = open(asprintf("assets/images/img_%s", req->request_line.URI), O_RDONLY);
+    int file_fd = open(asprintf("assets/images/img_%s", req->request_line.URI + 5), O_RDONLY);
     if (file_fd != -1)
     {
         send_file_response(client_fd, file_fd, 200, "OK", ".html");

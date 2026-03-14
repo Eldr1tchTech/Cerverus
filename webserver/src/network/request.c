@@ -30,7 +30,7 @@ void parse_request_line(request *req, char *raw_req_lin)
     req->request_line.method = parse_http_method(strtok(raw_req_lin, " "));
 
     char* URI_val = strtok(NULL, " ");
-    req->request_line.URI = cmem_alloc(memory_tag_request, strlen(URI_val) * sizeof(char));
+    req->request_line.URI = cmem_alloc(memory_tag_request, (strlen(URI_val) + 1) * sizeof(char));
     strcpy(req->request_line.URI, URI_val);
 
     req->request_line.version = parse_http_version(strtok(NULL, "\0"));
@@ -103,7 +103,7 @@ request *request_parse(char *raw_req)
     // BODY
     raw_req_cpy = index + 4;
     req->body.body_size = strlen(raw_req_cpy);
-    req->body.data = cmem_alloc(memory_tag_request, req->body.body_size * sizeof(char));
+    req->body.data = cmem_alloc(memory_tag_request, (req->body.body_size + 1) * sizeof(char));
     strcpy(req->body.data, raw_req_cpy);
 
     return req;
