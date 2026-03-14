@@ -38,6 +38,7 @@ int strchrc(char* str, char c) {
         {
             count++;
         }
+        *str++;
     }
     return count;
 }
@@ -53,6 +54,7 @@ int strchri(char* str, char c) {
         } else {
             i++;
         }
+        *str++;
     }
     return -1;
 }
