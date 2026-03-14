@@ -9,7 +9,8 @@ darray* parse_URI(char* URI) {
     URI++; // Skip the initial /
     route_segment* segment;
 
-    for (int i = 0; i < new_darr->size; i++)
+    int count = new_darr->size;
+    for (int i = 0; i < count; i++)
     {
         darray_add(new_darr, &segment);
         segment = (route_segment*)darray_get(new_darr, i);
