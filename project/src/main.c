@@ -54,11 +54,14 @@ int main()
 
     route *rt;
 
+    // Should the server destroy the route once it's done with it?
     rt = route_create(http_method_get, "/random_image", random_image_callback);
     server_add_route(s, rt);
+    route_destroy(rt);
 
     rt = route_create(http_method_get, "/pic/:id", random_image_provider_callback);
     server_add_route(s, rt);
+    route_destroy(rt);
 
     server_run(s);
 }
