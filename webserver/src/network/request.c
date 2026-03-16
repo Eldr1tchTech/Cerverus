@@ -29,7 +29,7 @@ void parse_request_line(request *req, char *raw_req_lin)
 {
     req->request_line.method = parse_http_method(strtok(raw_req_lin, " "));
 
-    char* URI_val = strtok(NULL, " ");
+    char *URI_val = strtok(NULL, " ");
     req->request_line.URI = cmem_alloc(memory_tag_request, (strlen(URI_val) + 1) * sizeof(char));
     strcpy(req->request_line.URI, URI_val);
 
@@ -46,7 +46,7 @@ void parse_headers(request *req, char *raw_headers)
 
     char *line = strtok(raw_headers, "\r\n");
     req->headers.header_count = 0;
-    header* h = &req->headers.headers[req->headers.header_count];
+    header *h = &req->headers.headers[req->headers.header_count];
 
     while (line != NULL)
     {
@@ -82,7 +82,7 @@ request *request_parse(char *raw_req)
 {
     request *req = cmem_alloc(memory_tag_request, sizeof(request));
 
-    req->_raw_buff = cmem_alloc(memory_tag_request, strlen(raw_req));
+    req->_raw_buff = cmem_alloc(memory_tag_request, strlen(raw_req) + 1);
     strcpy(req->_raw_buff, raw_req);
 
     // STATUS LINE
@@ -99,8 +99,15 @@ request *request_parse(char *raw_req)
 
     // BODY
     req->body.body_size = strlen(raw_req);
-    req->body.data = (req->body.body_size == 0) ? NULL : cmem_alloc(memory_tag_request, (req->body.body_size + 1) * sizeof(char));
-    strcpy(req->body.data, raw_req);
+    if (req->body.body_size == 0)
+    {
+        req->body.data = NULL;
+    }
+    else
+    {
+        req->body.data = cmem_alloc(memory_tag_request, (req->body.body_size + 1) * sizeof(char));
+        strcpy(req->body.data, raw_req);
+    }
 
     return req;
 }
@@ -108,7 +115,8 @@ request *request_parse(char *raw_req)
 void request_destroy(request *req)
 {
     cmem_free(memory_tag_request, req->request_line.URI);
-    if (req->body.body_size != 0) cmem_free(memory_tag_request, req->body.data);
+    if (req->body.body_size != 0)
+        cmem_free(memory_tag_request, req->body.data);
     cmem_free(memory_tag_request, req->_raw_buff);
     cmem_free(memory_tag_request, req);
 }

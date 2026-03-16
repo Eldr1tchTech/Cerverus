@@ -51,7 +51,7 @@ char *response_serialize(response *res)
     }
 
     // STATUS LINE
-    size += sprintf(NULL, "%s %i %s\r\n",
+    size += snprintf(NULL, 0, "%s %i %s\r\n",
                     serialize_http_version(res->status_line.version),
                     res->status_line.status_code,
                     res->status_line.reason_phrase);
@@ -59,21 +59,21 @@ char *response_serialize(response *res)
     // HEADERS
     for (size_t i = 0; i < res->headers.header_count; i++)
     {
-        size += sprintf(NULL,
+        size += snprintf(NULL, 0, 
                         "%s: %s\r\n",
                         res->headers.headers[i].name,
                         res->headers.headers[i].value);
     }
 
-    size += sprintf(NULL, "\r\n");
+    size += snprintf(NULL, 0, "\r\n");
 
     // BODY
-    size += res->body.body_size;
+    size += res->body.body_size + 1; // For null terminator
 
     // Pass 2: Allocate string and fill it
 
     // Allocate
-    char *raw_res = cmem_alloc(memory_tag_response, (size + 1) * sizeof(char));
+    char *raw_res = cmem_alloc(memory_tag_response, (size) * sizeof(char));
     size_t offset = 0;
 
     // STATUS LINE

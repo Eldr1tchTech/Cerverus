@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
 </head>
+
 <body>
     <p>Command: wrk -t12 -c400 -d30s http://localhost:8080/</p>
+    <h2>Baseline</h2>
     <pre>
 Running 30s test @ http://localhost:43661/index.html
   12 threads and 400 connections
@@ -18,8 +21,19 @@ Running 30s test @ http://localhost:43661/index.html
 Requests/sec:  10049.89
 Transfer/sec:     21.12MB
     </pre>
-        <li>Item 2</li>
-        <li>Item 3</li>
+
+    <h2>16/3/2026</h2>
+    <pre>Running 30s test @ http://localhost:8080/
+  12 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     1.69ms   30.74ms   1.95s    99.71%
+    Req/Sec     3.58k     4.45k   25.49k    90.83%
+  218467 requests in 30.09s, 459.82MB read
+  Socket errors: connect 0, read 2, write 0, timeout 36
+Requests/sec:   7260.20
+Transfer/sec:     15.28MB</pre>
+    <li>Item 3</li>
     </ul>
 </body>
+
 </html>

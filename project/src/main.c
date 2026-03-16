@@ -36,19 +36,10 @@ void random_image_callback(request *req, int client_fd)
     res->body.data = body;
     res->body.body_size = strlen(body);
 
-    header h;
-    h.name = "Content-Type";
-    h.value = "text/html";
-    darray_add(res->headers, &h);
-
-    h.name = "Content-Length";
-    char* content_length_str = asprintf("%zu", strlen(body));
-    h.value = content_length_str;
-    darray_add(res->headers, &h);
-
-    h.name = "Connection";
-    h.value = "close";
-    darray_add(res->headers, &h);
+    response_add_header(res, (header){.name = "Content-Type", .value = "text/html"});
+    char *content_length_str = asprintf("%i", res->body.body_size);
+    response_add_header(res, (header){.name = "Content-Length", .value = content_length_str});
+    response_add_header(res, (header){.name = "Connection", .value = "close"});
 
     char *raw = response_serialize(res);
     send(client_fd, raw, strlen(raw), MSG_NOSIGNAL);
