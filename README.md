@@ -4,11 +4,8 @@ A high performance webserver made for linux first, should eventually also be abl
 
 ## TODO
 
-- Dynamic routes
-- Create a strdup function that can take optional data about the string to reduce duplicating calculations.
-- Other file formats (mp4/mp3/etc.)
-- Uploading/Downloading Files
 - io_uring
+- Uploading/Downloading Files
 
 ## Prerequisites
 
@@ -20,9 +17,8 @@ A high performance webserver made for linux first, should eventually also be abl
 
 A prerelease version is working!
 
-- Can host a static website
+- Can host a dynamic website
 - Only allows for GET requests
-- Can serve custom routes (GET and static routes only)
 
 ### Upcoming
 
