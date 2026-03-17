@@ -8,3 +8,5 @@
 darray* parse_URI(char* URI);
 
 char *content_type_val_helper(const char *ext);
+
+void darray_destroy_string_helper(darray* darr);

@@ -86,12 +86,15 @@ void server_handle_request(server *s, request *req, int client_fd)
         const char *ext = strrchr(req->request_line.URI, '.');
         if (ext)
         {
-            int file_fd = open(asprintf("assets/public%s", req->request_line.URI), O_RDONLY);
+            char* file_name = asprintf("assets/public%s", req->request_line.URI);
+            int file_fd = open(file_name, O_RDONLY);
             if (file_fd != -1)
             {
                 send_file_response(client_fd, file_fd, 200, "OK", ext);
+                cmem_free(memory_tag_string, file_name);
                 return;
             }
+            cmem_free(memory_tag_string, file_name);
         }
     }
 

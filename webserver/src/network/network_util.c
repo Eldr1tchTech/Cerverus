@@ -82,3 +82,12 @@ char *content_type_val_helper(const char *ext)
     LOG_ERROR("content_type_val_helper - Please provide a valid char* for ext.");
     return NULL;
 }
+
+void darray_destroy_string_helper(darray* darr) {
+    char** darr_data = darr->data;
+    for (size_t i = 0; i < darr->length; i++)
+    {
+        cmem_free(memory_tag_string, darr_data[i]);
+    }
+    darray_destroy(darr);
+}
