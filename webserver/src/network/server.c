@@ -23,6 +23,8 @@
 #include <stdbool.h>
 #include <errno.h>
 
+#define QUEUE_DEPTH 32
+
 server *server_create()
 {
     server *s = cmem_alloc(memory_tag_server, sizeof(server));
@@ -117,8 +119,9 @@ void server_handle_request(server *s, request *req, int client_fd)
 void server_destroy(server *s)
 {
     cmem_print_stats();
-    cmem_free(memory_tag_server, s);
+
     trie_destroy(s->route_trie);
+    cmem_free(memory_tag_server, s);
 }
 
 void server_run(server *s)
@@ -133,6 +136,7 @@ void server_run(server *s)
     cmem_print_stats();
 
     LOG_INFO("Starting server...");
+    LOG_INFO("Setting up socket...");
 
     s->socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (s->socket_fd == -1)
@@ -149,10 +153,7 @@ void server_run(server *s)
         return;
     }
 
-    // TODO:
-    // fcntl(server_fd, F_SETFL, O_NONBLOCK);
-
-    struct sockaddr_in addr = {
+    const struct sockaddr_in addr = {
         .sin_family = AF_INET,
         .sin_port = htons(8080),
         .sin_addr.s_addr = INADDR_ANY};
@@ -160,6 +161,7 @@ void server_run(server *s)
     if (bind(s->socket_fd, &addr, sizeof(addr)) == -1)
     {
         LOG_FATAL("server_start - Bind failed.");
+        close(s->socket_fd);
         return;
     }
 
@@ -169,6 +171,22 @@ void server_run(server *s)
     if (listen(s->socket_fd, 10) == -1)
     {
         LOG_FATAL("server_start - Listen failed.");
+        close(s->socket_fd);
+        return;
+    }
+
+    LOG_INFO("Setting up io_uring...");
+
+    struct io_uring_params params;
+    cmem_zmem(&params, sizeof(params));
+    params.flags |= IORING_SETUP_SQPOLL;
+    params.sq_thread_idle = 2000; // 2s timeout
+
+    int ret = io_uring_queue_init_params(QUEUE_DEPTH, s->ring, &params);
+    if (ret < 0)
+    {
+        LOG_FATAL("server_run - io_uring init failed.");
+        close(s->socket_fd);
         return;
     }
 
@@ -217,6 +235,7 @@ void server_run(server *s)
     }
 
     close(s->socket_fd);
+    io_uring_queue_exit(s->ring);
 
     server_destroy(s);
 }

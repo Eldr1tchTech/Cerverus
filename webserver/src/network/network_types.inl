@@ -4,7 +4,6 @@
 
 #include "core/containers/darray.h"
 
-// TODO: Find a good max header count
 #define MAX_HEADER_COUNT 16
 
 typedef enum http_method {

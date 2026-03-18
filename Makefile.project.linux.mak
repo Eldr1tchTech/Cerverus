@@ -6,7 +6,7 @@ ASSEMBLY := project
 EXTENSION := 
 COMPILER_FLAGS := -std=c23 -g -fdeclspec -fPIC
 INCLUDE_FLAGS := -Iwebserver/src
-LINKER_FLAGS := -L./$(BUILD_DIR)/ -lwebserver -Wl,-rpath,'$$ORIGIN'
+LINKER_FLAGS := -luring -L./$(BUILD_DIR)/ -lwebserver -Wl,-rpath,'$$ORIGIN'
 DEFINES :=
 
 # Make does not offer a recursive wildcard function, so here's one:

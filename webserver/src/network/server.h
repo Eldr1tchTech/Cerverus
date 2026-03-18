@@ -5,11 +5,13 @@
 #include "core/containers/darray.h"
 #include "network/route_trie.h"
 
+#include <liburing.h>
+
 typedef struct server
 {
     int socket_fd;
-    // TODO: Change to use an trie
     trie* route_trie;
+    struct io_uring* ring;
 } server;
 
 server* server_create();

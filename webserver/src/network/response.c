@@ -27,7 +27,6 @@ response *response_create(int b_size)
     return new_res;
 }
 
-// TODO: Watch ownership of strings (heap vs stack allocation)
 void response_add_header(response* res, header h) {
     if (res->headers.header_count == MAX_HEADER_COUNT)
     {
