@@ -25,9 +25,10 @@
 
 #define QUEUE_DEPTH 32
 
-server *server_create()
+server *server_create(server_config* s_conf)
 {
     server *s = cmem_alloc(memory_tag_server, sizeof(server));
+    s->conf = s_conf;
     s->route_trie = trie_create();
 
     return s;
@@ -182,7 +183,7 @@ void server_run(server *s)
     params.flags |= IORING_SETUP_SQPOLL;
     params.sq_thread_idle = 2000; // 2s timeout
 
-    int ret = io_uring_queue_init_params(QUEUE_DEPTH, s->ring, &params);
+    int ret = io_uring_queue_init_params(s->conf->io_uring_queue_depth, s->ring, &params);
     if (ret < 0)
     {
         LOG_FATAL("server_run - io_uring init failed.");

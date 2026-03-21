@@ -9,9 +9,9 @@
     X(memory_tag_response, "[RESPONSE]") \
     X(memory_tag_string, "[STRING]") \
     X(memory_tag_queue, "[QUEUE]") \
-    X(memory_tag_benchmark, "[BENCHMARK]") \
     X(memory_tag_trie, "[TRIE]") \
-    X(memory_tag_route, "[ROUTE]")
+    X(memory_tag_route, "[ROUTE]") \
+    X(memory_tag_io_uring, "[IO_URING]")
 
 #define X_ENUM(tag, name) tag,
 typedef enum memory_tag {
