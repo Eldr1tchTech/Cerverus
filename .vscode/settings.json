@@ -1,0 +1,14 @@
+{
+    "todohighlight.isEnable": true,
+    "todohighlight.isCaseSensitive": true,
+    "todohighlight.keywords": [
+        {
+            "text": "NOTE:",
+            "color": "grey",
+        },
+        {
+            "text": "OPTIMIZATION:",
+            "color": "green",
+        },
+    ]
+}

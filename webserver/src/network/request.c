@@ -4,12 +4,48 @@
 #include "core/util/logger.h"
 
 #include <string.h>
+#include <sys/types.h>
 
+#define REQUEST_PARSE_INVALID INT_MIN
+
+// TODO: Properly handle http_method_unknown parsing
 http_method parse_http_method(char *raw_method)
 {
     if (strcmp(raw_method, "GET") == 0)
     {
         return http_method_get;
+    }
+    else if (strcmp(raw_method, "HEAD") == 0)
+    {
+        return http_method_head;
+    }
+    else if (strcmp(raw_method, "OPTIONS") == 0)
+    {
+        return http_method_options;
+    }
+    else if (strcmp(raw_method, "TRACE") == 0)
+    {
+        return http_method_trace;
+    }
+    else if (strcmp(raw_method, "PUT") == 0)
+    {
+        return http_method_put;
+    }
+    else if (strcmp(raw_method, "DELETE") == 0)
+    {
+        return http_method_delete;
+    }
+    else if (strcmp(raw_method, "POST") == 0)
+    {
+        return http_method_post;
+    }
+    else if (strcmp(raw_method, "PATCH") == 0)
+    {
+        return http_method_patch;
+    }
+    else if (strcmp(raw_method, "CONNECT") == 0)
+    {
+        return http_method_connect;
     }
     LOG_DEBUG("parse_http_method - Unable to parse an http_method from the provided string: %s.", raw_method);
     return http_method_unknown;
@@ -78,12 +114,29 @@ void parse_headers(request *req, char *raw_headers)
     }
 }
 
-request *request_parse(char *raw_req)
+// TODO: Malformed/Malicious request handling.
+// TODO: Eventually get rid of buffer duplication because now a copy is being saved in the request as well as the context structure.
+// TODO: I don't think I can actually modify raw_req anymore, so need to refactor that as well.
+request_parse_state request_parse(char *raw_req, ssize_t reqlen, request **req)
 {
-    request *req = cmem_alloc(memory_tag_request, sizeof(request));
+    // TODO: Implement this and add more stringent error checking and handling, as consumption of leftover requests will be more common now...
+    // OPTIMIZATION: write a custom searcher, that can take the length as an argument to allow for it to be precomputed.
+    // OPTIMIZATION: maybe only search based on an offset, as you already searched the first part in the last pass.
+    char *header_terminator = strstr(raw_req, "\r\n\r\n");
+    if (header_terminator == NULL)
+    {
+        // TODO: Special case if reqlen is 1892
+        return (request_parse_state) {
+            .type = request_parse_state_type_unfinished,
+        };
+    }
 
-    req->_raw_buff = cmem_alloc(memory_tag_request, strlen(raw_req) + 1);
-    strcpy(req->_raw_buff, raw_req);
+    *req = cmem_alloc(memory_tag_request, sizeof(request));
+
+    request* _req = *req;
+
+    _req->_raw_buff = cmem_alloc(memory_tag_request, strlen(raw_req) + 1);
+    strcpy(_req->_raw_buff, raw_req);
 
     // STATUS LINE
     char *index = strstr(raw_req, "\r\n");
@@ -91,25 +144,31 @@ request *request_parse(char *raw_req)
     parse_request_line(req, raw_req);
     raw_req = index + 2;
 
+    // handle http_method_unknown
+    http_method method = _req->request_line.method;
+    if (method == http_method_unknown)
+    {
+        return (request_parse_state) {
+            .type = request_parse_state_type_invalid,
+        };
+    }
+
     // HEADERS
     index = strstr(raw_req, "\r\n\r\n");
     *index = '\0';
     parse_headers(req, raw_req);
-    raw_req = index + 4;
+    raw_req = index + 4; // TODO: isn't it +2?
+    
+    if (method == http_method_get || method == http_method_head || method == http_method_trace)
+    {
+        return (request_parse_state) {
+            .type = request_parse_state_type_succeded,
+            .bytes_consumed = ,
+        };
+    }
 
     // BODY
-    req->body.body_size = strlen(raw_req);
-    if (req->body.body_size == 0)
-    {
-        req->body.data = NULL;
-    }
-    else
-    {
-        req->body.data = cmem_alloc(memory_tag_request, (req->body.body_size + 1) * sizeof(char));
-        strcpy(req->body.data, raw_req);
-    }
-
-    return req;
+    
 }
 
 void request_destroy(request *req)

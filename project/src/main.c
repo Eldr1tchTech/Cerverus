@@ -14,12 +14,7 @@
 int main()
 {
     server_config s_conf = {
-        .io_uring_queue_depth = 32,
         .port = 8080,
-        .keep_alive = {
-            .duration = 16,
-            .queue_depth = 32,
-        },
     };
 
     server *s = server_create(&s_conf);

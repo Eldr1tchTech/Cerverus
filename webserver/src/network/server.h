@@ -4,25 +4,19 @@
 
 #include "core/containers/darray.h"
 #include "network/route_trie.h"
-#include "network/io_uring_helper.h"
 
 #include <liburing.h>
 
 typedef struct server_config
 {
     int port;
-    struct {
-        double duration;
-        int queue_depth;
-    } keep_alive;
-    int io_uring_queue_depth;
 } server_config;
 
 typedef struct server
 {
     int socket_fd;
     trie* route_trie;
-    struct io_uring* ring;
+    struct io_uring ring;
     server_config* conf;
 } server;
 

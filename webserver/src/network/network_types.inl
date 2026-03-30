@@ -8,7 +8,14 @@
 
 typedef enum http_method {
     http_method_get,
+    http_method_head,
+    http_method_options,
+    http_method_trace,
+    http_method_put,
+    http_method_delete,
     http_method_post,
+    http_method_patch,
+    http_method_connect,
     http_method_unknown,
 } http_method;
 
@@ -67,12 +74,12 @@ typedef struct route_segment {
     bool is_dynamic;
 } route_segment;
 
-typedef struct route
-{
-    http_method method;
+typedef struct route {
     darray* segments;
+    http_method method;
     route_callback callback;
-} route;
+};
+
 
 typedef struct trie_node
 {

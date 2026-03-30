@@ -10,6 +10,7 @@
 #include "network/response.h"
 #include "network/route_trie.h"
 #include "network/network_util.h"
+#include "network/io_uring_helper.h"
 
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -183,7 +184,7 @@ void server_run(server *s)
     params.flags |= IORING_SETUP_SQPOLL;
     params.sq_thread_idle = 2000; // 2s timeout
 
-    int ret = io_uring_queue_init_params(s->conf->io_uring_queue_depth, s->ring, &params);
+    int ret = io_uring_queue_init_params(QUEUE_DEPTH, &s->ring, &params);
     if (ret < 0)
     {
         LOG_FATAL("server_run - io_uring init failed.");
@@ -191,52 +192,17 @@ void server_run(server *s)
         return;
     }
 
+    // TODO: Submit accepts here
+
     LOG_INFO("Server listening on port %i.\n\tVisit: http://localhost:%i/index.html", ntohs(addr.sin_port), ntohs(addr.sin_port));
 
     while (true)
     {
-        struct sockaddr_in client_addr;
-        socklen_t client_len = sizeof(client_addr);
-
-        int client_fd = accept(s->socket_fd, 0, 0);
-        if (client_fd == -1)
-        {
-            LOG_INFO("server_start - accept failed.");
-            continue;
-        }
-
-        char buffer[8192] = {0};
-        ssize_t bytes_received = recv(client_fd, buffer, 8192, 0);
-
-        if (bytes_received <= 0)
-        {
-            if (bytes_received == -1)
-            {
-                LOG_INFO("server_start - recv failed.");
-            }
-            else
-            {
-                LOG_INFO("Client disconnected.");
-            }
-            close(client_fd);
-            continue;
-        }
-
-        request *req = request_parse(buffer);
-
-        LOG_INFO("Request received.");
-
-        profile_operation("routing", {
-            server_handle_request(s, req, client_fd);
-        });
-
-        request_destroy(req);
-
-        close(client_fd);
+        process_completions();
     }
 
     close(s->socket_fd);
-    io_uring_queue_exit(s->ring);
+    io_uring_queue_exit(&s->ring);
 
     server_destroy(s);
 }
