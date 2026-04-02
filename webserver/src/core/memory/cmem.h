@@ -32,6 +32,6 @@ void cmem_free(memory_tag mem_tag, void* block);
 
 void cmem_zmem(void* block, size_t size);
 
-void cmem_mcpy(void* dest, void* source, size_t size);
+void cmem_mcpy(void* dest, void* src, size_t size);
 
 void cmem_print_stats();

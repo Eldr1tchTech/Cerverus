@@ -30,8 +30,8 @@ void cmem_zmem(void* block, size_t size) {
     memset(block, 0, size);
 }
 
-void cmem_mcpy(void* dest, void* source, size_t size) {
-    memcpy(dest, source, size);
+void cmem_mcpy(void* dest, void* src, size_t size) {
+    memcpy(dest, src, size);
 }
 
 void cmem_print_stats() {
