@@ -23,7 +23,16 @@ typedef struct request_parse_state_context
  * @param req the reqeust structure to populate
  * @return int -1 for missing headers, -2 for fatal error, otherwise, size of body
  */
-request_parse_state_context request_parse(char *raw_req, ssize_t reqlen, request* req);
+request_parse_state_context request_parse(char *raw_req, ssize_t reqlen, request** req);
 
 // Frees passed request and destroys pointer.
 void request_destroy(request* req);
+
+/**
+ * @brief Returns the value of a header, or null if not present.
+ * 
+ * @param req 
+ * @param header_name 
+ * @return char* 
+ */
+char* request_get_header_value(request* req, char* header_name);

@@ -114,6 +114,38 @@ void parse_headers(request *req, char *raw_headers)
     }
 }
 
+// TODO: maybe not stick this in a method? dunno
+// void parse_body(request* req, char* raw_body) {
+//     for (size_t i = 0; i < req->headers.header_count; i++)
+//     {
+//         if (strcmp(req->headers.headers[i].name, "Content-Length") == 0) // eventually case-insensitive
+//         {
+//             char *end;
+//             long content_length = strtol(req->headers.headers[i].value, &end, 10);
+//             if (end == req->headers.headers[i].value)
+//             {
+//                 // no digits found — malformed header
+//                 return (request_parse_state_context){
+//                     .type = request_parse_state_invalid,    // Maybe do some cleanup?
+//                 };
+//             } else if (reqlen - (b_consumed) >= content_length)
+//             {
+//                 req->body.data = cmem_alloc(memory_tag_request, content_length + 1);
+//                 cmem_mcpy(req->body.data, raw_body, content_length);
+//                 return (request_parse_state_context) {
+//                     .type = request_parse_state_succeded,
+//                     .bytes_consumed = b_consumed + content_length,
+//                 };
+//             } else {
+//                 return (request_parse_state_context) {
+//                     .type = request_parse_state_unfinished,
+//                     .bytes_consumed = b_consumed,
+//                 };
+//             }
+//         }
+//     }
+// }
+
 /*
 List of all possible states the request can be in:
 - no double CRLF and reqlen is not buffer size (1982 rn)
@@ -134,89 +166,114 @@ List of all possible states the request can be in:
 // TODO: I don't think I can actually modify raw_req anymore, so need to refactor that as well.
 request_parse_state_context request_parse(char *raw_req, ssize_t reqlen, request **req)
 {
-    if ((*req)->body.body_size)
+    int b_consumed = 0;
+    request* _req;
+    char *index = raw_req;
+
+    if ((*req)->_raw_buff == NULL)
     {
-        goto body_parse;
+        char *header_terminator = strstr(raw_req, "\r\n\r\n");
+        if (header_terminator == NULL)
+        {
+            // TODO: Special case if reqlen is 1892
+            return (request_parse_state_context){
+                .type = request_parse_state_unfinished,
+            };
+        }
+
+        *req = cmem_alloc(memory_tag_request, sizeof(request));
+        _req = *req;
+
+        _req->_raw_buff = cmem_alloc(memory_tag_request, strlen(raw_req) + 1); // Do I actually need the plus one? isn't it null terminated by default?
+        strcpy(_req->_raw_buff, raw_req);
+
+        char *raw_req_start = raw_req;
+
+        // STATUS LINE
+        index = strstr(raw_req, "\r\n");
+        *index = '\0';
+        parse_request_line(req, raw_req);
+        raw_req = index + 2;
+
+        // handle http_method_unknown
+        http_method method = _req->request_line.method;
+        if (method == http_method_unknown)
+        {
+            return (request_parse_state_context){
+                .type = request_parse_state_invalid,
+            };
+        }
+
+        // handle http_version_unknown
+        http_version version = _req->request_line.version;
+        if (version == http_version_unknown)
+        {
+            return (request_parse_state_context){
+                .type = request_parse_state_invalid,
+            };
+        }
+
+        // HEADERS
+        index = strstr(raw_req, "\r\n\r\n");
+        *index = '\0';
+        parse_headers(req, raw_req);
+        raw_req = index + 4;
+
+        b_consumed = raw_req - raw_req_start;
+
+        if (method == http_method_get || method == http_method_head || method == http_method_trace)
+        {
+            return (request_parse_state_context){
+                .type = request_parse_state_succeded,
+                .bytes_consumed = b_consumed,
+            };
+        }
     }
 
-    char *header_terminator = strstr(raw_req, "\r\n\r\n");
-    if (header_terminator == NULL)
+    if (!_req)
     {
-        // TODO: Special case if reqlen is 1892
-        return (request_parse_state_context){
-            .type = request_parse_state_unfinished,
-        };
-    }
-
-    *req = cmem_alloc(memory_tag_request, sizeof(request));
-    request *_req = *req;
-
-    _req->_raw_buff = cmem_alloc(memory_tag_request, strlen(raw_req) + 1); // Do I actually need the plus one? isn't it null terminated by default?
-    strcpy(_req->_raw_buff, raw_req);
-
-    char *raw_req_start = raw_req;
-
-    // STATUS LINE
-    char *index = strstr(raw_req, "\r\n");
-    *index = '\0';
-    parse_request_line(req, raw_req);
-    raw_req = index + 2;
-
-    // handle http_method_unknown
-    http_method method = _req->request_line.method;
-    if (method == http_method_unknown)
-    {
-        return (request_parse_state_context){
-            .type = request_parse_state_invalid,
-        };
-    }
-
-    // HEADERS
-    index = strstr(raw_req, "\r\n\r\n");
-    *index = '\0';
-    parse_headers(req, raw_req);
-    raw_req = index + 4;
-
-    int b_consumed = raw_req - raw_req_start;
-
-    if (method == http_method_get || method == http_method_head || method == http_method_trace)
-    {
-        return (request_parse_state_context){
-            .type = request_parse_state_succeded,
-            .bytes_consumed = b_consumed,
-        };
+        _req = *req;
     }
 
     // BODY
-    // traverse headers for content-length
-    body_parse:
-    for (size_t i = 0; i < _req->headers.header_count; i++)
+    // Get header value
+    char *raw_content_length = request_get_header_value(*req, "Content-Length");
+    if (raw_content_length == NULL)
     {
-        if (strcmp(_req->headers.headers[i].name, "Content-Length") == 0) // eventually case-insensitive
-        {
-            char *end;
-            long content_length = strtol(_req->headers.headers[i].value, &end, 10);
-            if (end == _req->headers.headers[i].value)
-            {
-                // no digits found — malformed header
-                return (request_parse_state_context){
-                    .type = request_parse_state_invalid,    // Maybe do some cleanup?
-                };
-            } else if (reqlen - (b_consumed) >= content_length)
-            {
-                _req->body.data = cmem_alloc(memory_tag_request, content_length + 1);
-                cmem_mcpy(_req->body.data, index, content_length);
-                return (request_parse_state_context) {
-                    .type = request_parse_state_succeded,
-                    .bytes_consumed = b_consumed + raw_req,
-                };
-            } else {
-                return (request_parse_state_context) {
-                    .type = request_parse_state_unfinished,
-                    .bytes_consumed = b_consumed,
-                };
-            }
-        }
+        // TODO: For now just invalid, probably a better way to handle
+        return (request_parse_state_context){
+            .type = request_parse_state_invalid, // Maybe do some cleanup?
+        };
+    }
+
+    // Convert header value
+    char *end;
+    long content_length = strtol(raw_content_length, &end, 10);
+    if (end == raw_content_length)
+    {
+        // no digits found — malformed header
+        return (request_parse_state_context){
+            .type = request_parse_state_invalid, // Maybe do some cleanup?
+        };
+    }
+
+    // Check content-length vs buffer
+    if (reqlen - (b_consumed) >= content_length)
+    {
+        _req->body.data = cmem_alloc(memory_tag_request, content_length + 1);
+        cmem_mcpy(_req->body.data, index, content_length);
+
+        return (request_parse_state_context){
+            .type = request_parse_state_succeded,
+            .bytes_consumed = b_consumed + content_length,
+        };
+    }
+    else
+    {
+        return (request_parse_state_context){
+            .type = request_parse_state_unfinished,
+            .bytes_consumed = b_consumed,
+        };
     }
 }
 
@@ -227,4 +284,16 @@ void request_destroy(request *req)
         cmem_free(memory_tag_request, req->body.data);
     cmem_free(memory_tag_request, req->_raw_buff);
     cmem_free(memory_tag_request, req);
+}
+
+char *request_get_header_value(request *req, char *header_name)
+{
+    for (size_t i = 0; i < req->headers.header_count; i++)
+    {
+        if (strcmp(req->headers.headers[i].name, "Content-Length") == 0) // TODO: Eventually make case insensitive
+        {
+            return req->headers.headers[i].value;
+        }
+    }
+    return NULL;
 }
