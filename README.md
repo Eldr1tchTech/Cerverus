@@ -5,8 +5,8 @@ A high performance webserver made for linux first, should eventually also be abl
 ## TODO
 
 - io_uring
-  - Bring back server config
-  - Split server and router into seperate structs
+- Go through includes in server.c
+- Bring back server config
 - Uploading/Downloading Files
 
 ## Prerequisites

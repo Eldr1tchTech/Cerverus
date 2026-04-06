@@ -3,7 +3,8 @@
 #include "network/network_types.inl"
 
 #include "core/containers/darray.h"
-#include "network/route_trie.h"
+#include "network/routing/route_trie.h"
+#include "network/routing/router.h"
 
 #include <liburing.h>
 
@@ -18,12 +19,10 @@ typedef struct server
     trie* route_trie;
     struct io_uring ring;
     server_config* conf;
+    router* rtr;
 } server;
 
 server* server_create(server_config* s_conf);
-
-void server_add_route(server* s, route* rt);
-void server_handle_request(server* s, request* req, int client_fd);
 
 void server_run(server* s);
 

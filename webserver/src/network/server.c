@@ -2,15 +2,18 @@
 
 #include "defines.h"
 
+#include "network_types.inl"
+
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
 #include "core/util/profiler.h"
 #include "core/util/util.h"
 #include "network/request.h"
 #include "network/response.h"
-#include "network/route_trie.h"
+#include "network/routing/route_trie.h"
 #include "network/network_util.h"
 #include "network/io_uring_helper.h"
+#include "network/route.h"
 
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -24,6 +27,7 @@
 #include <stdbool.h>
 #include <errno.h>
 
+
 #define QUEUE_DEPTH 32
 
 server *server_create(server_config* s_conf)
@@ -33,11 +37,6 @@ server *server_create(server_config* s_conf)
     s->route_trie = trie_create();
 
     return s;
-}
-
-void server_add_route(server *s, route *rt)
-{
-    trie_add_route(s->route_trie, rt);
 }
 
 void send_file_response(int client_fd, int file_fd, int status_code, const char *reason_phrase, char *ext)
@@ -70,52 +69,6 @@ void send_file_response(int client_fd, int file_fd, int status_code, const char 
     */
 
     close(file_fd);
-}
-
-void server_handle_request(server *s, request *req, int client_fd)
-{
-    if (strcmp(req->request_line.URI, "/") == 0)
-    {
-        int file_fd = open("assets/public/index.html", O_RDONLY);
-        if (file_fd != -1)
-        {
-            send_file_response(client_fd, file_fd, 200, "OK", ".html");
-            return;
-        }
-    }
-
-    // 1. Check public directory
-    if (req->request_line.method == http_method_get)
-    {
-        const char *ext = strrchr(req->request_line.URI, '.');
-        if (ext)
-        {
-            char* file_name = asprintf("assets/public%s", req->request_line.URI);
-            int file_fd = open(file_name, O_RDONLY);
-            if (file_fd != -1)
-            {
-                send_file_response(client_fd, file_fd, 200, "OK", ext);
-                cmem_free(memory_tag_string, file_name);
-                return;
-            }
-            cmem_free(memory_tag_string, file_name);
-        }
-    }
-
-    // 2. Check against dynamic registered routes
-    route_callback handler = trie_find_handler(s->route_trie, req->request_line.method, req->request_line.URI);
-    if (handler)
-    {
-        (*handler)(req, client_fd);
-        return;
-    }
-
-    // 3. Send 404 if you have made it to this point
-    int file_fd = open("assets/404.html", O_RDONLY);
-    if (file_fd != -1)
-    {
-        send_file_response(client_fd, file_fd, 404, "Not Found", ".html");
-    }
 }
 
 void server_destroy(server *s)

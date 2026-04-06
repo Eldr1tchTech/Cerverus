@@ -1,6 +1,6 @@
 #pragma once
 
-#include "network_types.inl"
+#include "network/network_types.inl"
 
 #include "network/server.h"
 

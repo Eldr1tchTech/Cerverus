@@ -114,38 +114,6 @@ void parse_headers(request *req, char *raw_headers)
     }
 }
 
-// TODO: maybe not stick this in a method? dunno
-// void parse_body(request* req, char* raw_body) {
-//     for (size_t i = 0; i < req->headers.header_count; i++)
-//     {
-//         if (strcmp(req->headers.headers[i].name, "Content-Length") == 0) // eventually case-insensitive
-//         {
-//             char *end;
-//             long content_length = strtol(req->headers.headers[i].value, &end, 10);
-//             if (end == req->headers.headers[i].value)
-//             {
-//                 // no digits found — malformed header
-//                 return (request_parse_state_context){
-//                     .type = request_parse_state_invalid,    // Maybe do some cleanup?
-//                 };
-//             } else if (reqlen - (b_consumed) >= content_length)
-//             {
-//                 req->body.data = cmem_alloc(memory_tag_request, content_length + 1);
-//                 cmem_mcpy(req->body.data, raw_body, content_length);
-//                 return (request_parse_state_context) {
-//                     .type = request_parse_state_succeded,
-//                     .bytes_consumed = b_consumed + content_length,
-//                 };
-//             } else {
-//                 return (request_parse_state_context) {
-//                     .type = request_parse_state_unfinished,
-//                     .bytes_consumed = b_consumed,
-//                 };
-//             }
-//         }
-//     }
-// }
-
 /*
 List of all possible states the request can be in:
 - no double CRLF and reqlen is not buffer size (1982 rn)

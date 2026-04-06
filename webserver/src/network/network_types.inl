@@ -78,8 +78,7 @@ typedef struct route {
     darray* segments;
     http_method method;
     route_callback callback;
-};
-
+} route;
 
 typedef struct trie_node
 {
