@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 1000px;
+            padding: 40px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            font-size: 28px;
+        }
+        .user-info {
+            text-align: right;
+        }
+        .user-info p {
+            color: #666;
+            margin: 5px 0;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .card p {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Dashboard</h1>
+            <div class="user-info">
+                <p><strong>User Name</strong></p>
+                <p>user@example.com</p>
+            </div>
+        </header>
+        
+        <div class="dashboard-grid">
+            <div class="card">
+                <h3>📊 Statistics</h3>
+                <p>Total Activities: <strong>45</strong></p>
+                <p>Last Updated: Today</p>
+            </div>
+            
+            <div class="card">
+                <h3>🔔 Notifications</h3>
+                <p>You have <strong>3</strong> new messages</p>
+                <p>Check your inbox for updates</p>
+            </div>
+            
+            <div class="card">
+                <h3>⚙️ Settings</h3>
+                <p>Account settings and preferences</p>
+                <p>Manage your profile security</p>
+            </div>
+            
+            <div class="card">
+                <h3>📁 Files</h3>
+                <p>Storage used: <strong>2.5 GB</strong></p>
+                <p>Limit: 10 GB</p>
+            </div>
+        </div>
+        
+        <div class="button-group">
+            <button class="btn-primary">View Details</button>
+            <button class="btn-secondary">Settings</button>
+            <button class="btn-secondary">Logout</button>
+        </div>
+    </div>
+</body>
+</html>

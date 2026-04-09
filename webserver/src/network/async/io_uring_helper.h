@@ -1,8 +1,9 @@
 #pragma once
 
-#include "server.h"
+#include "network/server.h"
 #include "core/memory/cmem.h"
 
+#include <signal.h>
 #include <liburing.h>
 
 #define BUFFER_SIZE 8192
@@ -50,7 +51,7 @@ typedef struct uring_close_context {
     uring_op_type op_type;
 } uring_close_context;
 
-void uring_process_completions();
+void uring_process_completions(server *srv);
 
 void handle_accept_submission(server *srv);
 void handle_accept_completion(struct io_uring_cqe *cqe, uring_context *ctx);
@@ -58,14 +59,14 @@ void handle_accept_completion(struct io_uring_cqe *cqe, uring_context *ctx);
 void handle_recv_submission(uring_context *ctx);
 void handle_recv_completion(struct io_uring_cqe *cqe, uring_context *ctx);
 
-void handle_openat_submission();
-void handle_openat_completion();
+void handle_openat_submission(uring_context *ctx, char* path);
+void handle_openat_completion(struct io_uring_cqe* cqe, uring_context* ctx);
 
-void handle_send_submission();
-void handle_send_completion();
+void handle_send_submission(uring_context *ctx);
+void handle_send_completion(struct io_uring_cqe *cqe, uring_context *ctx);
 
-void handle_sendfile_submission();
-void handle_sendfile_completion();
+void handle_sendfile_submission(uring_context *ctx);
+void handle_sendfile_completion(struct io_uring_cqe *cqe, uring_context *ctx);
 
-void handle_close_submission();
-void handle_close_completion();
+void handle_close_submission(struct io_uring* ring, int fd);
+void handle_close_completion(uring_context *ctx);

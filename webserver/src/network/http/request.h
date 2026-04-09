@@ -1,6 +1,6 @@
 #pragma once
 
-#include "network_types.inl"
+#include "network/network_types.inl"
 
 typedef enum request_parse_state {
     request_parse_state_succeded,
@@ -23,7 +23,7 @@ typedef struct request_parse_state_context
  * @param req the reqeust structure to populate
  * @return int -1 for missing headers, -2 for fatal error, otherwise, size of body
  */
-request_parse_state_context request_parse(char *raw_req, ssize_t reqlen, request** req);
+request_parse_state_context request_parse(char *raw_req, size_t reqlen, request **req);
 
 // Frees passed request and destroys pointer.
 void request_destroy(request* req);

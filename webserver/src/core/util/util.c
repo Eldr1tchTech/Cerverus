@@ -6,7 +6,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-char *asprintf(char *fmt, ...)
+char *asprintf_cerv(char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);

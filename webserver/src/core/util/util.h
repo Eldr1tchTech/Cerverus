@@ -1,6 +1,6 @@
 #pragma once
 
-char* asprintf(char* fmt, ...);
+char* asprintf_cerv(char* fmt, ...);
 
 int strchrc(char* str, char c);
 

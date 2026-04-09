@@ -1,6 +1,6 @@
 #pragma once
 
-#include "network_types.inl"
+#include "network/network_types.inl"
 
 // Allocates the structure. Note this does not set ANY values.
 response* response_create(int b_size);

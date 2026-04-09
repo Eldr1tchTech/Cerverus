@@ -132,7 +132,7 @@ List of all possible states the request can be in:
 // TODO: Malformed/Malicious request handling.
 // TODO: Eventually get rid of buffer duplication because now a copy is being saved in the request as well as the context structure.
 // TODO: I don't think I can actually modify raw_req anymore, so need to refactor that as well.
-request_parse_state_context request_parse(char *raw_req, ssize_t reqlen, request **req)
+request_parse_state_context request_parse(char *raw_req, size_t reqlen, request **req)
 {
     int b_consumed = 0;
     request* _req;

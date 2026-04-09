@@ -5,6 +5,7 @@
 #include "network/http/response.h"
 
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <string.h>
 
 void uring_process_completions(server *srv)
@@ -13,7 +14,7 @@ void uring_process_completions(server *srv)
 
     while (io_uring_peek_cqe(&srv->ring, &cqe) == 0)
     {
-        uring_context *ctx = cqe->user_data;
+        uring_context *ctx = (uring_context*)cqe->user_data;
 
         switch (ctx->op_type)
         {
@@ -97,7 +98,7 @@ void handle_recv_completion(struct io_uring_cqe *cqe, uring_context *ctx)
     {
     case request_parse_state_succeded:
         cmem_mcpy(ctx->request.buffer, ctx->request.buffer + parse_ctx.bytes_consumed, BUFFER_SIZE - parse_ctx.bytes_consumed);
-        server_handle_request(ctx->srv, ctx->request, ctx->client.fd);
+        router_handle_request(ctx->srv->rtr, ctx->request.request, ctx->client.fd);
         break;
     case request_parse_state_invalid:
         handle_close_submission(ctx, ctx->client.fd);

@@ -8,12 +8,12 @@
 #include "core/util/logger.h"
 #include "core/util/profiler.h"
 #include "core/util/util.h"
-#include "network/request.h"
-#include "network/response.h"
+#include "network/http/request.h"
+#include "network/http/response.h"
 #include "network/routing/route_trie.h"
 #include "network/network_util.h"
-#include "network/io_uring_helper.h"
-#include "network/route.h"
+#include "network/async/io_uring_helper.h"
+#include "network/routing/route.h"
 
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -54,7 +54,7 @@ void send_file_response(int client_fd, int file_fd, int status_code, const char 
 
     // Headers
     response_add_header(res, (header){.name = "Content-Type", .value = content_type_val_helper(ext)});
-    char *content_length_str = asprintf("%i", file_stat.st_size);
+    char *content_length_str = asprintf_cerv("%i", file_stat.st_size);
     response_add_header(res, (header){.name = "Content-Length", .value = content_length_str});
     response_add_header(res, (header){.name = "Connection", .value = "close"});
 
@@ -149,10 +149,7 @@ void server_run(server *s)
 
     LOG_INFO("Server listening on port %i.\n\tVisit: http://localhost:%i/index.html", ntohs(addr.sin_port), ntohs(addr.sin_port));
 
-    while (true)
-    {
-        process_completions();
-    }
+    // TODO: Remember to finish the main even loop
 
     close(s->socket_fd);
     io_uring_queue_exit(&s->ring);

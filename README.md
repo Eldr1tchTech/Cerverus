@@ -7,6 +7,9 @@ A high performance webserver made for linux first, should eventually also be abl
 - io_uring
 - Go through includes in server.c
 - Bring back server config
+- Clean-up containers
+ - add options to hashmap
+ - make them configurable (custom compare function pointers), etc.
 - Uploading/Downloading Files
 
 ## Prerequisites

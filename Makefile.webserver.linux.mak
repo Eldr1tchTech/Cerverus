@@ -7,7 +7,7 @@ EXTENSION := .so
 COMPILER_FLAGS := -std=c23 -g -fdeclspec -fPIC
 INCLUDE_FLAGS := -Iwebserver/src
 LINKER_FLAGS := -g -shared -lrt
-DEFINES :=
+DEFINES := -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE -D_DEBUG
 
 # Make does not offer a recursive wildcard function, so here's one:
 #rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))

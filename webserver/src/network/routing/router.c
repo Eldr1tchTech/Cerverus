@@ -38,7 +38,7 @@ void router_handle_request(router* rtr, request* request, int client_fd) {
         const char *ext = strrchr(request->request_line.URI, '.');
         if (ext)
         {
-            char* file_name = asprintf("assets/public%s", request->request_line.URI);
+            char* file_name = asprintf_cerv("assets/public%s", request->request_line.URI);
             int file_fd = open(file_name, O_RDONLY);
             if (file_fd != -1)
             {
@@ -51,7 +51,7 @@ void router_handle_request(router* rtr, request* request, int client_fd) {
     }
 
     // 2. Check against dynamic registered routes
-    route_callback handler = trie_find_handler(s->route_trie, request->request_line.method, request->request_line.URI);
+    route_callback handler = trie_find_handler(rtr->routing_table, request->request_line.method, request->request_line.URI);
     if (handler)
     {
         (*handler)(request, client_fd);
