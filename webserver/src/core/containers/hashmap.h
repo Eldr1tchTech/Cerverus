@@ -1,26 +1,26 @@
 #pragma once
 
-#include "defines.h"
+#include <stddef.h>
+
+typedef size_t (*hash_fn)(const char* key);
 
 typedef struct hashmap_entry
 {
     bool exists;
-    char key[256];  // URI, e.g. "/index.html"
-    char path[256]; // fs path, e.g. "assets/public/index.html"
+    const char* key;
+    char data[];
 } hashmap_entry;
 
 typedef struct hashmap
 {
-    size_t capacity;
+    size_t size;
+    size_t stride;
+    hash_fn hash;
     hashmap_entry* entries;
 } hashmap;
 
-hashmap* hashmap_create();
+hashmap* hashmap_create(size_t size, size_t stride);
 void hashmap_destroy(hashmap* hmap);
 
-void hashmap_set(hashmap* hmap, hashmap_entry entry);
-
-bool hashmap_entry_exists(hashmap* hmap, char* key);
-
-// Returns NULL if not found.
-hashmap_entry* hashmap_get(hashmap* hmap, char* key);
+bool hashmap_set(hashmap* hmap, const char* key, void* element);
+void* hashmap_get(hashmap* hmap, const char* key);
