@@ -13,6 +13,10 @@ size_t hash_fn_fnv1a(const char *key) {
     return hash;
 }
 
+hashmap_entry* hashmap_get_entry(hashmap* hmap, size_t index) {
+    return (hashmap_entry*)(hmap->entries + ((sizeof(hashmap_entry) + hmap->stride) * index));
+}
+
 hashmap* hashmap_create(size_t size, size_t stride) {
     hashmap* hmap = cmem_alloc(memory_tag_hashmap, sizeof(hashmap));
 
@@ -25,19 +29,29 @@ hashmap* hashmap_create(size_t size, size_t stride) {
 }
 
 void hashmap_destroy(hashmap* hmap) {
+    for (size_t i = 0; i < hmap->size; i++)
+    {
+        hashmap_entry* curr_entry = hashmap_get_entry(hmap, i);
+        if (curr_entry->exists)
+        {
+            cmem_free(memory_tag_hashmap, curr_entry->key);
+        }
+    }
     cmem_free(memory_tag_hashmap, hmap->entries);
     cmem_free(memory_tag_hashmap, hmap);
 }
 
 bool hashmap_set(hashmap* hmap, const char* key, void* element) {
-    for (size_t i = hmap->hash(key) % hmap->size; i < hmap->size; i++)
+    size_t start = hmap->hash(key) % hmap->size;
+    for (size_t i = 0; i < hmap->size; i++)
     {
-        hashmap_entry* curr_entry = &hmap->entries[i];
+        hashmap_entry* curr_entry = hashmap_get_entry(hmap, (start + i) % hmap->size);
         if (curr_entry->exists)
         {
             if (strcmp(curr_entry->key, key) == 0)
             {
                 cmem_mcpy(curr_entry->data, element, hmap->stride);
+                cmem_free(memory_tag_hashmap, curr_entry->key);
                 curr_entry->key = cmem_alloc(memory_tag_hashmap, strlen(key) + 1);
                 strcpy(curr_entry->key, key);
                 curr_entry->exists = true;
@@ -46,6 +60,7 @@ bool hashmap_set(hashmap* hmap, const char* key, void* element) {
             continue;
         }
         cmem_mcpy(curr_entry->data, element, hmap->stride);
+        cmem_free(memory_tag_hashmap, curr_entry->key);
         curr_entry->key = cmem_alloc(memory_tag_hashmap, strlen(key) + 1);
         strcpy(curr_entry->key, key);
         curr_entry->exists = true;
@@ -55,12 +70,13 @@ bool hashmap_set(hashmap* hmap, const char* key, void* element) {
 }
 
 void* hashmap_get(hashmap* hmap, const char* key) {
-    for (size_t i = hmap->hash(key) % hmap->size; i < hmap->size; i++)
+    size_t start = hmap->hash(key) % hmap->size;
+    for (size_t i = 0; i < hmap->size; i++)
     {
-        hashmap_entry* curr_entry = &hmap->entries[i];
+        hashmap_entry* curr_entry = hashmap_get_entry(hmap, (start + i) % hmap->size);
         if (curr_entry->exists)
         {
-            if (strcmp(curr_entry, key) == 0)
+            if (strcmp(curr_entry->key, key) == 0)
             {
                 return curr_entry->data;
             }
@@ -68,4 +84,5 @@ void* hashmap_get(hashmap* hmap, const char* key) {
         }
         return NULL;
     }
+    return NULL;
 }
