@@ -19,7 +19,7 @@ typedef struct hashmap
     hashmap_entry* entries;
 } hashmap;
 
-hashmap* hashmap_create(size_t size, size_t stride, hash_fn hash);
+hashmap* hashmap_create(size_t size, double load, size_t stride, hash_fn hash);
 void hashmap_destroy(hashmap* hmap);
 
 bool hashmap_set(hashmap* hmap, const char* key, void* element);

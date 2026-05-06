@@ -1,10 +1,9 @@
 #include "hashmap.h"
 
-#include <core/memory/cmem.h>
+#include "core/memory/cmem.h"
+#include "core/util/logger.h"
 
 #include <string.h>
-
-// TODO: Create a load based constructor wrapper
 
 size_t hash_fnv1a(const char *key)
 {
@@ -22,16 +21,17 @@ hashmap_entry *hashmap_get_entry(hashmap *hmap, size_t index)
     return (hashmap_entry *)(hmap->entries + ((sizeof(hashmap_entry) + hmap->stride) * index));
 }
 
-hashmap *hashmap_create(size_t size, size_t stride, hash_fn hash)
-{
-    hashmap *hmap = cmem_alloc(memory_tag_hashmap, sizeof(hashmap));
 
-    hmap->size = size;
-    hmap->stride = stride;
-    hmap->hash = hash ? hash : hash_fnv1a;
-    hmap->entries = cmem_alloc(memory_tag_hashmap, (sizeof(hashmap_entry) + stride) * size);
+hashmap* hashmap_create(size_t size, double load, size_t stride, hash_fn hash) {
+    hashmap *new_hmap = cmem_alloc(memory_tag_hashmap, sizeof(hashmap));
 
-    return hmap;
+    if (load <= 0 || load > 1) LOG_DEBUG("hashmap_create - load should be between 0.0 and 1.0. load: %d", load);
+    new_hmap->size = size / load;
+    new_hmap->stride = stride;
+    new_hmap->hash = hash ? hash : hash_fnv1a;
+    new_hmap->entries = cmem_alloc(memory_tag_hashmap, (sizeof(hashmap_entry) + stride) * size);
+
+    return new_hmap;
 }
 
 void hashmap_destroy(hashmap *hmap)
