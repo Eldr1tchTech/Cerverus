@@ -75,7 +75,7 @@ void doubly_linked_list_push_front(doubly_linked_list *dll, void *data)
 
     cmem_mcpy(new_node->data, data, dll->stride);
     new_node->next = dll->head;
-    dll->head->prev = new_node;
+    if (dll->length != 0) dll->head->prev = new_node;
     dll->head = new_node;
     dll->length++;
 
@@ -89,7 +89,7 @@ void doubly_linked_list_push_back(doubly_linked_list *dll, void *data)
 
     cmem_mcpy(new_node->data, data, dll->stride);
     new_node->prev = dll->tail;
-    dll->tail->next = new_node;
+    if (dll->length != 0) dll->tail->next = new_node;
     dll->tail = new_node;
     dll->length++;
 
