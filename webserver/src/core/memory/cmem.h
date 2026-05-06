@@ -14,7 +14,8 @@
     X(memory_tag_io_uring, "[IO_URING]") \
     X(memory_tag_router, "[ROUTER]") \
     X(memory_tag_unknown, "[UNKNOWN]") \
-    X(memory_tag_hashmap, "[HASHMAP]")
+    X(memory_tag_hashmap, "[HASHMAP]") \
+    X(memory_tag_doubly_linked_list, "[DOUBLY_LINKED_LIST]")
 
 #define X_ENUM(tag, name) tag,
 typedef enum memory_tag {

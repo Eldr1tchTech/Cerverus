@@ -7,7 +7,7 @@ typedef size_t (*hash_fn)(const char* key);
 typedef struct hashmap_entry
 {
     bool exists;
-    const char* key;
+    char* key;
     char data[];
 } hashmap_entry;
 
@@ -19,7 +19,7 @@ typedef struct hashmap
     hashmap_entry* entries;
 } hashmap;
 
-hashmap* hashmap_create(size_t size, size_t stride);
+hashmap* hashmap_create(size_t size, size_t stride, hash_fn hash);
 void hashmap_destroy(hashmap* hmap);
 
 bool hashmap_set(hashmap* hmap, const char* key, void* element);

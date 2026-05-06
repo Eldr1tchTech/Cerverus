@@ -16,12 +16,6 @@
 
 int main()
 {
-    hashmap* hmap = hashmap_create();
-    if (hashmap_entry_exists(hmap, "/user/user.html")) {
-        LOG_DEBUG("Exists!");
-    } else {
-        LOG_DEBUG("Does not exist.");
-    }
     // server_config s_conf = {
     //     .port = 8080,
     // };

@@ -4,7 +4,9 @@
 
 #include <string.h>
 
-size_t hash_fn_fnv1a(const char *key) {
+// TODO: Create a load based constructor wrapper
+
+size_t hash_fnv1a(const char *key) {
     size_t hash = 14695981039346656037ULL;
     while (*key) {
         hash ^= (unsigned char)*key++;
@@ -17,12 +19,12 @@ hashmap_entry* hashmap_get_entry(hashmap* hmap, size_t index) {
     return (hashmap_entry*)(hmap->entries + ((sizeof(hashmap_entry) + hmap->stride) * index));
 }
 
-hashmap* hashmap_create(size_t size, size_t stride) {
+hashmap* hashmap_create(size_t size, size_t stride, hash_fn hash) {
     hashmap* hmap = cmem_alloc(memory_tag_hashmap, sizeof(hashmap));
 
     hmap->size = size;
     hmap->stride = stride;
-    hmap->hash = hash_fn_fnv1a;
+    hmap->hash = hash ? hash : hash_fnv1a;
     hmap->entries = cmem_alloc(memory_tag_hashmap, (sizeof(hashmap_entry) + stride) * size);
 
     return hmap;
