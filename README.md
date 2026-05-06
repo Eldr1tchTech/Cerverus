@@ -4,13 +4,17 @@ A high performance webserver made for linux first, should eventually also be abl
 
 ## TODO
 
+- add hashmap creation helper functions (for load based sizing)
+- create the LRU cache
+- create the filemap hashmap
 - io_uring
 - Go through includes in server.c
 - Bring back server config
-- Clean-up containers
- - add options to hashmap
- - make them configurable (custom compare function pointers), etc.
 - Uploading/Downloading Files
+
+## Ideas
+- Add a flatten option to certain containers
+- add an optional pool to the linked list.
 
 ## Prerequisites
 
@@ -33,7 +37,7 @@ A prerelease version is working!
 
 ## Benchmark
 
-For a report to be created all unit tests must have passed as well as the smoke test. Specifc stats are for a peak load test with the arguments seen in the report. Note that key changes since the last report are included.
+For a report to be created all unit tests must have passed as well as the smoke test. Specific stats are for a peak load test with the arguments seen in the report. Note that key changes since the last report are included.
 
 ## Structure
 
