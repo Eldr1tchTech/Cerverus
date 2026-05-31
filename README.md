@@ -10,6 +10,7 @@ A high performance webserver made for linux first, should eventually also be abl
 - io_uring
 - Go through includes in server.c
 - Bring back server config
+- use GnuTLS for the SSL handshake
 - Uploading/Downloading Files
 
 ## Ideas
