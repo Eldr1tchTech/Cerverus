@@ -36,7 +36,7 @@ typedef struct uring_context
     {
         char buffer[BUFFER_SIZE];
         size_t offset;
-        request *request;
+        request request;
     } request;
     struct
     {

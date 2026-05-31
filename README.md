@@ -4,7 +4,7 @@ A high performance webserver made for linux first, should eventually also be abl
 
 ## TODO
 
-- add hashmap creation helper functions (for load based sizing)
+- finsih bitwise util, bump allocator, pool allocator
 - create the LRU cache
 - create the filemap hashmap
 - io_uring
@@ -13,7 +13,6 @@ A high performance webserver made for linux first, should eventually also be abl
 - Uploading/Downloading Files
 
 ## Ideas
-- Add a flatten option to certain containers
 - add an optional pool to the linked list.
 
 ## Prerequisites

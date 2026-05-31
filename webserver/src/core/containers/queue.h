@@ -3,7 +3,7 @@
 typedef struct node
 {
     void* data;
-    void* next;
+    node* next;
 } node;
 
 typedef struct queue

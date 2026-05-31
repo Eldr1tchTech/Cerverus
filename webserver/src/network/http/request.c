@@ -119,129 +119,90 @@ List of all possible states the request can be in:
 - no double CRLF and reqlen is not buffer size (1982 rn)
     - keep filling buffer
 - no double CRLF and reqlen is buffer size (1982 rn)
-    - fatal error, this is an malicious request (probably)
+    - fatal error, this is an malicious request
 - double CRLF is present and it doesn't have a body (based on http_method and content-length header presence)
     - parse headers, return amount of bytes consumed
 - double CRLF is present and it has a body
     - the entire body is there
         - parse it in
-    - the entire body is not there
-        - return amount of consumed bytes, up to the double CRLF, store that body is present somewhere, on next pass repeat this check,
 */
 
 // TODO: Malformed/Malicious request handling.
-// TODO: Eventually get rid of buffer duplication because now a copy is being saved in the request as well as the context structure.
-// TODO: I don't think I can actually modify raw_req anymore, so need to refactor that as well.
-request_parse_state_context request_parse(char *raw_req, size_t reqlen, request **req)
+int request_parse(char *raw_req, size_t req_len, request *req)
 {
-    int b_consumed = 0;
-    request* _req;
-    char *index = raw_req;
-
-    if ((*req)->_raw_buff == NULL)
+    char *header_terminator = strstr(raw_req, "\r\n\r\n");
+    if (header_terminator == NULL)
     {
-        char *header_terminator = strstr(raw_req, "\r\n\r\n");
-        if (header_terminator == NULL)
+        if (req_len >= 1892 - 1) // TODO: revisit this
         {
-            // TODO: Special case if reqlen is 1892
-            return (request_parse_state_context){
-                .type = request_parse_state_unfinished,
-            };
+            return -1; // Malformed, headers should be kept below 1892
         }
-
-        *req = cmem_alloc(memory_tag_request, sizeof(request));
-        _req = *req;
-
-        _req->_raw_buff = cmem_alloc(memory_tag_request, strlen(raw_req) + 1); // Do I actually need the plus one? isn't it null terminated by default?
-        strcpy(_req->_raw_buff, raw_req);
-
-        char *raw_req_start = raw_req;
-
-        // STATUS LINE
-        index = strstr(raw_req, "\r\n");
-        *index = '\0';
-        parse_request_line(req, raw_req);
-        raw_req = index + 2;
-
-        // handle http_method_unknown
-        http_method method = _req->request_line.method;
-        if (method == http_method_unknown)
+        else
         {
-            return (request_parse_state_context){
-                .type = request_parse_state_invalid,
-            };
+            return 0; // Unfinished.
         }
-
-        // handle http_version_unknown
-        http_version version = _req->request_line.version;
-        if (version == http_version_unknown)
-        {
-            return (request_parse_state_context){
-                .type = request_parse_state_invalid,
-            };
-        }
-
-        // HEADERS
-        index = strstr(raw_req, "\r\n\r\n");
-        *index = '\0';
-        parse_headers(req, raw_req);
-        raw_req = index + 4;
-
-        b_consumed = raw_req - raw_req_start;
-
-        if (method == http_method_get || method == http_method_head || method == http_method_trace)
-        {
-            return (request_parse_state_context){
-                .type = request_parse_state_succeded,
-                .bytes_consumed = b_consumed,
-            };
-        }
-    }
-
-    if (!_req)
-    {
-        _req = *req;
-    }
-
-    // BODY
-    // Get header value
-    char *raw_content_length = request_get_header_value(*req, "Content-Length");
-    if (raw_content_length == NULL)
-    {
-        // TODO: For now just invalid, probably a better way to handle
-        return (request_parse_state_context){
-            .type = request_parse_state_invalid, // Maybe do some cleanup?
-        };
-    }
-
-    // Convert header value
-    char *end;
-    long content_length = strtol(raw_content_length, &end, 10);
-    if (end == raw_content_length)
-    {
-        // no digits found — malformed header
-        return (request_parse_state_context){
-            .type = request_parse_state_invalid, // Maybe do some cleanup?
-        };
-    }
-
-    // Check content-length vs buffer
-    if (reqlen - (b_consumed) >= content_length)
-    {
-        _req->body.data = cmem_alloc(memory_tag_request, content_length + 1);
-        cmem_mcpy(_req->body.data, index, content_length);
-
-        return (request_parse_state_context){
-            .type = request_parse_state_succeded,
-            .bytes_consumed = b_consumed + content_length,
-        };
     }
     else
     {
-        return (request_parse_state_context){
-            .type = request_parse_state_unfinished,
-            .bytes_consumed = b_consumed,
-        };
+        req = cmem_alloc(memory_tag_request, sizeof(request)); // TODO: probably do need to switch back to double pointer
+
+        // fill _raw_buff
+        req->_raw_buff = cmem_alloc(memory_tag_request, req_len + 1);
+        strcpy(raw_req, req->_raw_buff);
+
+        // STATUS LINE
+        char *index = strstr(req->_raw_buff, "\r\n");
+        *index = '\0';
+        parse_request_line(req, req->_raw_buff);
+        char *req_cursor = index + 2;
+
+        // handle malformed.
+        http_method method = req->request_line.method; // for later
+        if (method == http_method_unknown || req->request_line.version == http_version_unknown)
+        {
+            return -1; // Malformed.
+        }
+
+        // HEADERS
+        index = strstr(req_cursor, "\r\n\r\n");
+        *index = '\0';
+        parse_headers(req, req->_raw_buff);
+        req_cursor = index + 4;
+
+        char *content_length_header_value = request_get_header_value(req, "Content-Length");
+
+        if (method == http_method_get || method == http_method_head || method == http_method_trace)
+        {
+            // No body should be present
+            if (content_length_header_value)
+            {
+                return -1; // Malformed.
+            }
+
+            return req_cursor - req->_raw_buff; // Success, change this eventually to flush all pending requests in buffer.
+        }
+        else
+        {
+            char *content_length_header_value = request_get_header_value(req, "Content-Length");
+            if (content_length_header_value)
+            {
+                char *endptr = NULL;
+                unsigned long content_length = strtoul(content_length_header_value, &endptr, 10);
+
+                if (endptr == content_length_header_value || *endptr != '\0')
+                {
+                    return -1; // invalid Content-Length
+                }
+
+                req->body.data = cmem_alloc(memory_tag_request, content_length + 1);
+                req->body.body_size = (size_t)content_length;
+
+                memcpy(req->body.data, req_cursor, content_length);
+                req->body.data[content_length] = '\0';
+
+                return (req_cursor - req->_raw_buff) + content_length;
+            }
+        }
     }
 }
 

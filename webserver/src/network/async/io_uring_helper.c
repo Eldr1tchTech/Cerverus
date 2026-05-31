@@ -92,13 +92,14 @@ void handle_recv_submission(uring_context *ctx)
 // TODO: Eventually should flush all requests within a read, not just the first one.
 void handle_recv_completion(struct io_uring_cqe *cqe, uring_context *ctx)
 {
-    request_parse_state_context parse_ctx = request_parse(ctx->request.buffer, BUFFER_SIZE, ctx->request.request);  // TODO: Maybe use cqe->res for buffer size instead?
+    LOG_DEBUG("%s", ctx->request.buffer);
+    request_parse_state_context parse_ctx = request_parse(ctx->request.buffer, BUFFER_SIZE, &ctx->request.request);  // TODO: Maybe use cqe->res for buffer size instead?
 
     switch (parse_ctx.type)
     {
     case request_parse_state_succeded:
         cmem_mcpy(ctx->request.buffer, ctx->request.buffer + parse_ctx.bytes_consumed, BUFFER_SIZE - parse_ctx.bytes_consumed);
-        router_handle_request(ctx->srv->rtr, ctx->request.request, ctx->client.fd);
+        router_handle_request(ctx->srv->rtr, &ctx->request.request, ctx->client.fd);
         break;
     case request_parse_state_invalid:
         handle_close_submission(ctx, ctx->client.fd);
