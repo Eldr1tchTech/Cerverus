@@ -4,10 +4,9 @@ A high performance webserver made for linux first, should eventually also be abl
 
 ## TODO
 
-- finsih bitwise util, bump allocator, pool allocator
+- finish io_uring state machine
 - create the LRU cache
 - create the filemap hashmap
-- io_uring
 - Go through includes in server.c
 - Bring back server config
 - use GnuTLS for the SSL handshake
