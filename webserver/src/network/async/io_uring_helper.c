@@ -14,7 +14,7 @@ void uring_process_completions(server *srv)
 
     while (io_uring_peek_cqe(&srv->ring, &cqe) == 0)
     {
-        uring_context *ctx = (uring_context*)cqe->user_data;
+        uring_context *ctx = (uring_context *)cqe->user_data;
 
         switch (ctx->op_type)
         {
@@ -83,7 +83,7 @@ void handle_recv_submission(uring_context *ctx)
     struct io_uring_sqe *sqe = io_uring_get_sqe(&ctx->srv->ring);
     ctx->op_type = uring_op_type_recv;
 
-    io_uring_prep_recv(sqe, ctx->client.fd, ctx->request.buffer, BUFFER_SIZE, 0);
+    io_uring_prep_recv(sqe, ctx->client.fd, ctx->request.buffer + ctx->request.offset, BUFFER_SIZE - ctx->request.offset, 0);
     io_uring_sqe_set_data(sqe, ctx);
 
     io_uring_submit(&ctx->srv->ring);
@@ -93,25 +93,30 @@ void handle_recv_submission(uring_context *ctx)
 void handle_recv_completion(struct io_uring_cqe *cqe, uring_context *ctx)
 {
     LOG_DEBUG("%s", ctx->request.buffer);
-    request_parse_state_context parse_ctx = request_parse(ctx->request.buffer, BUFFER_SIZE, &ctx->request.request);  // TODO: Maybe use cqe->res for buffer size instead?
-
-    switch (parse_ctx.type)
+    do
     {
-    case request_parse_state_succeded:
-        cmem_mcpy(ctx->request.buffer, ctx->request.buffer + parse_ctx.bytes_consumed, BUFFER_SIZE - parse_ctx.bytes_consumed);
-        router_handle_request(ctx->srv->rtr, &ctx->request.request, ctx->client.fd);
-        break;
-    case request_parse_state_invalid:
-        handle_close_submission(ctx, ctx->client.fd);
-        break;
-    case request_parse_state_unfinished:
-        cmem_mcpy(ctx->request.buffer, ctx->request.buffer + parse_ctx.bytes_consumed, BUFFER_SIZE - parse_ctx.bytes_consumed);
-        handle_recv_submission(ctx);
-    }
+        int parse_ctx = request_parse(ctx->request.buffer, BUFFER_SIZE, &ctx->request.request); // TODO: Maybe use cqe->res for buffer size instead?
+
+        if (parse_ctx < 0)
+        {
+            // TODO: send error
+        }
+        else if (parse_ctx == 0)
+        {
+            handle_recv_submission(ctx);
+        }
+        else
+        {
+            ctx->srv
+        }
+    } while (condition);
+
+    io_uring_cqe_seen(&ctx->srv->ring, cqe);
 }
 
 // TODO: Eventually implement some sort of LRU_cache
-void handle_openat_submission(uring_context *ctx, char* path) {
+void handle_openat_submission(uring_context *ctx, char *path)
+{
     struct io_uring_sqe *sqe = io_uring_get_sqe(&ctx->srv->ring);
     ctx->op_type = uring_op_type_openat;
 
@@ -121,22 +126,25 @@ void handle_openat_submission(uring_context *ctx, char* path) {
     io_uring_submit(&ctx->srv->ring);
 }
 
-void handle_openat_completion(struct io_uring_cqe* cqe, uring_context* ctx) {
+void handle_openat_completion(struct io_uring_cqe *cqe, uring_context *ctx)
+{
     if (cqe->res <= 0)
     {
         LOG_ERROR("handle_openat_completion - Failed.");
         return;
     }
-    
+
     ctx->file_fd = cqe->res;
 }
 
-void handle_send_submission(uring_context *ctx) {
+void handle_send_submission(uring_context *ctx)
+{
     struct io_uring_sqe *sqe = io_uring_get_sqe(&ctx->srv->ring);
     ctx->op_type = uring_op_type_send;
 
-    if (!ctx->response.buffer) {
-        ctx->response.buffer = response_serialize(ctx->response.response);  // TODO: Eventually have this fill the length.
+    if (!ctx->response.buffer)
+    {
+        ctx->response.buffer = response_serialize(ctx->response.response); // TODO: Eventually have this fill the length.
         ctx->response.length = strlen(ctx->response.buffer);
         ctx->response.offset = 0;
     }
@@ -147,13 +155,14 @@ void handle_send_submission(uring_context *ctx) {
     io_uring_submit(&ctx->srv->ring);
 }
 
-void handle_send_completion(struct io_uring_cqe *cqe, uring_context *ctx) {
+void handle_send_completion(struct io_uring_cqe *cqe, uring_context *ctx)
+{
     if (cqe->res < 0)
     {
         LOG_ERROR("error?");
         return;
     }
-    
+
     ctx->response.offset += cqe->res;
 
     if (ctx->response.length > ctx->response.offset)
@@ -161,12 +170,13 @@ void handle_send_completion(struct io_uring_cqe *cqe, uring_context *ctx) {
         handle_send_submission(ctx);
         return;
     }
-    
+
     handle_close_submission(&ctx->srv->ring, ctx->client.fd); // TODO: Please note that you need to take care of file desccriptors here
     // The best solution is probably to wrap the openat with an check to an internal file_fd cache.
 }
 
-void handle_sendfile_submission(uring_context *ctx) {
+void handle_sendfile_submission(uring_context *ctx)
+{
     struct io_uring_sqe *sqe = io_uring_get_sqe(&ctx->srv->ring);
     ctx->op_type = uring_op_type_sendfile;
 
@@ -176,13 +186,14 @@ void handle_sendfile_submission(uring_context *ctx) {
     io_uring_submit(&ctx->srv->ring);
 }
 
-void handle_sendfile_completion(struct io_uring_cqe *cqe, uring_context *ctx) {
-    
+void handle_sendfile_completion(struct io_uring_cqe *cqe, uring_context *ctx)
+{
 }
 
-void handle_close_submission(struct io_uring* ring, int fd) {
+void handle_close_submission(struct io_uring *ring, int fd)
+{
     struct io_uring_sqe *sqe = io_uring_get_sqe(ring);
-    uring_close_context* ctx = cmem_alloc(memory_tag_io_uring, sizeof(uring_close_context));
+    uring_close_context *ctx = cmem_alloc(memory_tag_io_uring, sizeof(uring_close_context));
     ctx->op_type = uring_op_type_close;
 
     io_uring_prep_close(sqe, fd);
@@ -191,6 +202,7 @@ void handle_close_submission(struct io_uring* ring, int fd) {
     io_uring_submit(ring);
 }
 
-void handle_close_completion(uring_context *ctx) {
+void handle_close_completion(uring_context *ctx)
+{
     cmem_free(memory_tag_io_uring, ctx);
 }

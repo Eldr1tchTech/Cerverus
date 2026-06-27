@@ -33,4 +33,4 @@ hashmap* hashmap_rehash(hashmap* hmap);
 
 bool hashmap_set(hashmap* hmap, const char* key, void* element);
 void* hashmap_get(hashmap* hmap, const char* key);
-void hashmap_delete(hashmap* hmap, const char* key);
+bool hashmap_delete(hashmap* hmap, const char* key);

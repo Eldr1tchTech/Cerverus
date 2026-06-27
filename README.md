@@ -4,6 +4,7 @@ A high performance webserver made for linux first, should eventually also be abl
 
 ## TODO
 
+- switch reading into a fixed-size buffer, into instead an darray
 - finish io_uring state machine
 - create the LRU cache
 - create the filemap hashmap

@@ -5,7 +5,7 @@
 typedef struct bump_allocator
 {
     size_t size;
-    size_t cursor;
+    void* cursor;
     void* data;
 } bump_allocator;
 
