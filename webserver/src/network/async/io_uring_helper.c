@@ -93,25 +93,47 @@ void handle_recv_submission(uring_context *ctx)
 void handle_recv_completion(struct io_uring_cqe *cqe, uring_context *ctx)
 {
     LOG_DEBUG("%s", ctx->request.buffer);
+    int bytes_read = cqe->res;
+    if (bytes_read < 0)
+    {
+        LOG_ERROR("handle_recv_completion - Standard linux error.");
+        return;
+    } else if (bytes_read == 0)
+    {
+        LOG_DEBUG("handle_recv_completion - Client closed connection.");
+        return;
+    }
+
+    int parse_result;
     do
     {
-        int parse_ctx = request_parse(ctx->request.buffer, BUFFER_SIZE, &ctx->request.request); // TODO: Maybe use cqe->res for buffer size instead?
+        parse_result = request_parse(ctx->request.buffer, bytes_read, &ctx->request.request);
 
-        if (parse_ctx < 0)
+        if (parse_result < 0)
         {
             // TODO: send error
+            LOG_ERROR("handle_recv_completion - Error parsing, need to figure out how to flush the buffer safely.");
+            return;
         }
-        else if (parse_ctx == 0)
+        else if (parse_result == 0)
         {
+            if (ctx->request.offset + bytes_read > BUFFER_SIZE)
+            {
+                LOG_ERROR("handle_recv_completion - Attempted to overflow buffer.");
+            } else
+            {
+                ctx->request.offset += bytes_read;
+            }
+            
             handle_recv_submission(ctx);
         }
         else
         {
-            ctx->srv
+            cmem_mcpy(ctx->request.buffer, ctx->request.buffer + parse_result, ctx->request.offset - parse_result);
+            ctx->request.offset -= parse_result;
+            router_handle_request(ctx->srv->rtr, &ctx->request.request, ctx->client.fd);
         }
-    } while (condition);
-
-    io_uring_cqe_seen(&ctx->srv->ring, cqe);
+    } while (parse_result != 0); // TODO: Figure out how to flush all requests from the buffer and attempt to parse them.
 }
 
 // TODO: Eventually implement some sort of LRU_cache

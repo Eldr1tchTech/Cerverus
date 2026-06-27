@@ -9,7 +9,7 @@
  * @param raw_req the raw request
  * @param reqlen the length of the reqeust to parse
  * @param req the reqeust structure to populate
- * @return int -1 for missing headers, -2 for fatal error, otherwise, size of body
+ * @return int -1 for missing headers, 0 if unifinished, otherwise size consumed
  */
 int request_parse(char *raw_req, size_t reqlen, request *req);
 

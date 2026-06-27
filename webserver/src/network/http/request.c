@@ -114,19 +114,6 @@ void parse_headers(request *req, char *raw_headers)
     }
 }
 
-/*
-List of all possible states the request can be in:
-- no double CRLF and reqlen is not buffer size (1982 rn)
-    - keep filling buffer
-- no double CRLF and reqlen is buffer size (1982 rn)
-    - fatal error, this is an malicious request
-- double CRLF is present and it doesn't have a body (based on http_method and content-length header presence)
-    - parse headers, return amount of bytes consumed
-- double CRLF is present and it has a body
-    - the entire body is there
-        - parse it in
-*/
-
 // TODO: Malformed/Malicious request handling.
 int request_parse(char *raw_req, size_t req_len, request *req)
 {
