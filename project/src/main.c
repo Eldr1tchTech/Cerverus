@@ -17,11 +17,11 @@
 
 int main()
 {
-    server_config s_conf = {
+    server_config srv_conf = {
         .port = 8080,
     };
 
-    server *s = server_create(&s_conf);
+    server *srv = server_create(&srv_conf);
 
-    server_run(s);
+    server_run(srv);
 }

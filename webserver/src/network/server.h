@@ -5,6 +5,8 @@
 #include "core/containers/darray.h"
 #include "network/routing/route_trie.h"
 #include "network/routing/router.h"
+#include "core/memory/pool_allocator.h"
+#include "core/containers/LRU_cache.h"
 
 #include <signal.h>
 #include <fcntl.h>
@@ -20,7 +22,12 @@ typedef struct server
 {
     int socket_fd;
     trie* route_trie;
-    struct io_uring ring;
+    struct
+    {
+        struct io_uring ring;
+        pool_allocator* pool_alloc_ctx;
+        LRU_cache* LRU_fd_cache;
+    } uring;
     server_config* conf;
     router* rtr;
 } server;

@@ -27,14 +27,14 @@
 #include <stdbool.h>
 #include <errno.h>
 
-
 #define QUEUE_DEPTH 64
 
-server *server_create(server_config* s_conf)
+server *server_create(server_config *s_conf)
 {
     server *s = cmem_alloc(memory_tag_server, sizeof(server));
     s->conf = s_conf;
     s->route_trie = trie_create();
+    s->rtr = router_create();
 
     return s;
 }
@@ -46,8 +46,8 @@ void send_file_response(int client_fd, int file_fd, int status_code, const char 
     response *res = response_create(0);
 
     res->status_line.version = http_version_1p1;
-    res->status_line.status_code = 200;
-    res->status_line.reason_phrase = "OK";
+    res->status_line.status_code = status_code;
+    res->status_line.reason_phrase = reason_phrase;
 
     struct stat file_stat;
     fstat(file_fd, &file_stat);
@@ -63,7 +63,7 @@ void send_file_response(int client_fd, int file_fd, int status_code, const char 
     send(client_fd, raw, strlen(raw), MSG_NOSIGNAL);
     sendfile(client_fd, file_fd, 0, file_stat.st_size);
     cmem_free(memory_tag_response, raw);
-    cmem_free(memory_tag_string, content_length_str);   // Find some way to get rid of this...
+    cmem_free(memory_tag_string, content_length_str); // Find some way to get rid of this...
     /* IDEA:
     Allocate a buffer that should be big enough, use snprintf, if it fails, allocate enough
     */
@@ -73,8 +73,6 @@ void send_file_response(int client_fd, int file_fd, int status_code, const char 
 
 void server_destroy(server *s)
 {
-    cmem_print_stats();
-
     trie_destroy(s->route_trie);
     cmem_free(memory_tag_server, s);
 }
@@ -87,8 +85,6 @@ void server_run(server *s)
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0; // No SA_RESETHAND — disposition stays ignored permanently
     sigaction(SIGPIPE, &sa, NULL);
-
-    cmem_print_stats();
 
     LOG_INFO("Starting server...");
     LOG_INFO("Setting up socket...");
@@ -123,7 +119,7 @@ void server_run(server *s)
     socklen_t len = sizeof(addr);
     getsockname(s->socket_fd, (struct sockaddr *)&addr, &len);
 
-    if (listen(s->socket_fd, 10) == -1)
+    if (listen(s->socket_fd, 512) == -1)
     {
         LOG_FATAL("server_start - Listen failed.");
         close(s->socket_fd);
@@ -132,12 +128,15 @@ void server_run(server *s)
 
     LOG_INFO("Setting up io_uring...");
 
+    s->uring.pool_alloc_ctx = pool_allocator_create(sizeof(uring_context), 64);
+
     struct io_uring_params params;
     cmem_zmem(&params, sizeof(params));
-    params.flags |= IORING_SETUP_SQPOLL;
+    params.flags |= IORING_SETUP_SQPOLL | IORING_SETUP_SQ_AFF;
+    params.sq_thread_cpu = 3;
     params.sq_thread_idle = 2000; // 2s timeout
 
-    int ret = io_uring_queue_init_params(QUEUE_DEPTH, &s->ring, &params);
+    int ret = io_uring_queue_init_params(QUEUE_DEPTH, &s->uring.ring, &params);
     if (ret < 0)
     {
         LOG_FATAL("server_run - io_uring init failed.");
@@ -145,11 +144,7 @@ void server_run(server *s)
         return;
     }
 
-    // TODO: Submit accepts here
-    for (size_t i = 0; i < 8; i++)
-    {
-        handle_accept_submission(s);
-    }
+    handle_accept_submission(s);
 
     LOG_INFO("Server listening on port %i.\n\tVisit: http://localhost:%i/index.html", ntohs(addr.sin_port), ntohs(addr.sin_port));
 
@@ -159,7 +154,7 @@ void server_run(server *s)
     }
 
     close(s->socket_fd);
-    io_uring_queue_exit(&s->ring);
+    io_uring_queue_exit(&s->uring.ring);
 
     server_destroy(s);
 }

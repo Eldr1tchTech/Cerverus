@@ -211,11 +211,27 @@ void doubly_linked_list_pop_at(doubly_linked_list *dll, size_t index, void *data
     doubly_linked_list_node *node = doubly_linked_list_get_node(dll, index);
 
     if (data != NULL)
-        cmem_mcpy(data, node, dll->stride);
+        cmem_mcpy(data, node->data, dll->stride);
 
     node->prev->next = node->next;
     node->next->prev = node->prev;
     doubly_linked_list_node_destroy(node);
 
     dll->length--;
+}
+
+void doubly_linked_list_pop_node(doubly_linked_list* dll, doubly_linked_list_node* node) {
+    if (node == dll->head) doubly_linked_list_pop_front(dll, NULL);
+    if (node == dll->tail) doubly_linked_list_pop_back(dll, NULL);
+    
+    node->prev->next = node->next;
+    node->next->prev = node->prev;
+    doubly_linked_list_node_destroy(node);
+
+    dll->length--;
+}
+
+void doubly_linked_list_push_node_to_front(doubly_linked_list* dll, doubly_linked_list_node* node) {
+    doubly_linked_list_push_front(dll, node->data);
+    doubly_linked_list_pop_node(dll, node);
 }

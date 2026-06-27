@@ -82,10 +82,11 @@ void parse_headers(request *req, char *raw_headers)
 
     char *line = strtok(raw_headers, "\r\n");
     req->headers.header_count = 0;
-    header *h = &req->headers.headers[req->headers.header_count];
 
     while (line != NULL)
     {
+        header *h = &req->headers.headers[req->headers.header_count];
+        
         // Find the colon separator
         char *colon = strchr(line, ':');
         if (colon != NULL)
@@ -131,11 +132,9 @@ int request_parse(char *raw_req, size_t req_len, request *req)
     }
     else
     {
-        req = cmem_alloc(memory_tag_request, sizeof(request)); // TODO: probably do need to switch back to double pointer
-
         // fill _raw_buff
         req->_raw_buff = cmem_alloc(memory_tag_request, req_len + 1);
-        strcpy(raw_req, req->_raw_buff);
+        strcpy(req->_raw_buff, raw_req);
 
         // STATUS LINE
         char *index = strstr(req->_raw_buff, "\r\n");
@@ -153,7 +152,7 @@ int request_parse(char *raw_req, size_t req_len, request *req)
         // HEADERS
         index = strstr(req_cursor, "\r\n\r\n");
         *index = '\0';
-        parse_headers(req, req->_raw_buff);
+        parse_headers(req, req_cursor);
         req_cursor = index + 4;
 
         char *content_length_header_value = request_get_header_value(req, "Content-Length");
@@ -206,7 +205,7 @@ char *request_get_header_value(request *req, char *header_name)
 {
     for (size_t i = 0; i < req->headers.header_count; i++)
     {
-        if (strcmp(req->headers.headers[i].name, "Content-Length") == 0) // TODO: Eventually make case insensitive
+        if (strcmp(req->headers.headers[i].name, header_name) == 0) // TODO: Eventually make case insensitive
         {
             return req->headers.headers[i].value;
         }
