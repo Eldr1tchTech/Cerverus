@@ -36,4 +36,4 @@ void doubly_linked_list_pop_at(doubly_linked_list* dll, size_t index, void* data
 void doubly_linked_list_pop_node(doubly_linked_list* dll, doubly_linked_list_node* node);
 
 // Move
-void doubly_linked_list_push_node_to_front(doubly_linked_list* dll, doubly_linked_list_node* node);
+void doubly_linked_list_move_to_front(doubly_linked_list* dll, doubly_linked_list_node* node);

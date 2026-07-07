@@ -21,3 +21,4 @@ void LRU_cache_destroy(LRU_cache* cache);
 
 void* LRU_cache_get(LRU_cache* cache, char* label);
 void LRU_cache_add(LRU_cache* cache, char* label, void* item);
+void LRU_cache_rehash(LRU_cache* cache);

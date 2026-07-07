@@ -18,7 +18,7 @@ size_t hash_fnv1a(const char *key)
 
 hashmap_entry *hashmap_get_entry(hashmap *hmap, size_t index)
 {
-    return (hashmap_entry *)(hmap->entries + ((sizeof(hashmap_entry) + hmap->stride) * index));
+    return (hashmap_entry *)((char *)hmap->entries + ((sizeof(hashmap_entry) + hmap->stride) * index));
 }
 
 
@@ -56,7 +56,7 @@ bool hashmap_set(hashmap *hmap, const char *key, void *element)
         hashmap_entry *curr_entry = hashmap_get_entry(hmap, (start + i) % hmap->size);
         if (curr_entry->exists || curr_entry->is_tombstone)
         {
-            if (strcmp(curr_entry->key, key) == 0)
+            if (curr_entry->exists && strcmp(curr_entry->key, key) == 0)
             {
                 cmem_mcpy(curr_entry->data, element, hmap->stride);
                 if (curr_entry->key)
@@ -87,7 +87,7 @@ void *hashmap_get(hashmap *hmap, const char *key)
         hashmap_entry *curr_entry = hashmap_get_entry(hmap, (start + i) % hmap->size);
         if (curr_entry->exists || curr_entry->is_tombstone)
         {
-            if (strcmp(curr_entry->key, key) == 0)
+            if (curr_entry->exists && strcmp(curr_entry->key, key) == 0)
             {
                 return curr_entry->data;
             }
@@ -104,7 +104,7 @@ hashmap* hashmap_rehash(hashmap* hmap) {
     hashmap_entry* curr_entry;
     for (size_t i = 0; i < hmap->size; i++)
     {
-        curr_entry = &hmap->entries[i];
+        curr_entry = hashmap_get_entry(hmap, i);
         if (curr_entry->exists)
         {
             hashmap_set(new_hmap, curr_entry->key, curr_entry->data);
@@ -123,7 +123,7 @@ bool hashmap_delete(hashmap* hmap, const char* key) {
         hashmap_entry *curr_entry = hashmap_get_entry(hmap, (start + i) % hmap->size);
         if (curr_entry->exists || curr_entry->is_tombstone)
         {
-            if (strcmp(curr_entry->key, key) == 0)
+            if (curr_entry->exists && strcmp(curr_entry->key, key) == 0)
             {
                 cmem_zmem(curr_entry, sizeof(hashmap_entry) + hmap->stride);
                 curr_entry->is_tombstone = true;

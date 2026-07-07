@@ -231,7 +231,16 @@ void doubly_linked_list_pop_node(doubly_linked_list* dll, doubly_linked_list_nod
     dll->length--;
 }
 
-void doubly_linked_list_push_node_to_front(doubly_linked_list* dll, doubly_linked_list_node* node) {
-    doubly_linked_list_push_front(dll, node->data);
-    doubly_linked_list_pop_node(dll, node);
+void doubly_linked_list_move_to_front(doubly_linked_list *dll, doubly_linked_list_node *node)
+{
+    if (dll->head == node) return;
+
+    if (node->prev) node->prev->next = node->next;
+    if (node->next) node->next->prev = node->prev;
+    if (dll->tail == node) dll->tail = node->prev;
+
+    node->prev = NULL;
+    node->next = dll->head;
+    dll->head->prev = node;
+    dll->head = node;
 }
