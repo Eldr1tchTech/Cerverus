@@ -1,0 +1,22 @@
+[
+  {
+    "file": "webserver/src/core/containers/doubly_linked_list.c",
+    "arguments": [
+      "/usr/bin/clang",
+      "webserver/src/core/containers/doubly_linked_list.c",
+      "-std=c23",
+      "-g",
+      "-fdeclspec",
+      "-fPIC",
+      "-c",
+      "-o",
+      "obj/webserver/src/core/containers/doubly_linked_list.c.o",
+      "-D_POSIX_C_SOURCE=200809L",
+      "-D_GNU_SOURCE",
+      "-D_DEBUG",
+      "-Iwebserver/src"
+    ],
+    "directory": "/home/n0b0dy/development/Cerverus",
+    "output": "obj/webserver/src/core/containers/doubly_linked_list.c.o"
+  }
+]

@@ -2,4 +2,4 @@
 
 #include "defines.h"
 
-typedef struct socket_handle;
+// typedef struct socket_handle;
