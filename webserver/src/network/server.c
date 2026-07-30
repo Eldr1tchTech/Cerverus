@@ -8,153 +8,149 @@
 #include "core/util/logger.h"
 #include "core/util/profiler.h"
 #include "core/util/util.h"
+#include "network/async/io_uring_helper.h"
 #include "network/http/request.h"
 #include "network/http/response.h"
-#include "network/routing/route_trie.h"
 #include "network/network_util.h"
-#include "network/async/io_uring_helper.h"
 #include "network/routing/route.h"
+#include "network/routing/route_trie.h"
 
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/sendfile.h>
 #include <arpa/inet.h>
-#include <netinet/in.h>
-#include <unistd.h>
+#include <errno.h>
 #include <fcntl.h>
-#include <string.h>
+#include <netinet/in.h>
 #include <signal.h>
 #include <stdbool.h>
-#include <errno.h>
+#include <string.h>
+#include <sys/sendfile.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #define QUEUE_DEPTH 64
 
-server *server_create(server_config *s_conf)
-{
-    server *s = cmem_alloc(memory_tag_server, sizeof(server));
-    s->conf = s_conf;
-    s->route_trie = trie_create();
-    s->rtr = router_create();
+server *server_create(server_config *s_conf) {
+  server *s = cmem_alloc(sizeof(server));
+  s->conf = s_conf;
+  s->route_trie = trie_create();
+  s->rtr = router_create();
 
-    return s;
+  return s;
 }
 
-void send_file_response(int client_fd, int file_fd, int status_code, const char *reason_phrase, char *ext)
-{
-    // 1. Assemble response
-    // TODO: Eventually use a pool for this
-    response *res = response_create(0);
+void send_file_response(int client_fd, int file_fd, int status_code,
+                        const char *reason_phrase, char *ext) {
+  // 1. Assemble response
+  // TODO: Eventually use a pool for this
+  response *res = response_create(0);
 
-    res->status_line.version = http_version_1p1;
-    res->status_line.status_code = status_code;
-    res->status_line.reason_phrase = reason_phrase;
+  res->status_line.version = http_version_1p1;
+  res->status_line.status_code = status_code;
+  res->status_line.reason_phrase = reason_phrase;
 
-    struct stat file_stat;
-    fstat(file_fd, &file_stat);
+  struct stat file_stat;
+  fstat(file_fd, &file_stat);
 
-    // Headers
-    response_add_header(res, (header){.name = "Content-Type", .value = content_type_val_helper(ext)});
-    char *content_length_str = asprintf_cerv("%i", file_stat.st_size);
-    response_add_header(res, (header){.name = "Content-Length", .value = content_length_str});
-    response_add_header(res, (header){.name = "Connection", .value = "close"});
+  // Headers
+  response_add_header(res, (header){.name = "Content-Type",
+                                    .value = content_type_val_helper(ext)});
+  char *content_length_str = asprintf_cerv("%i", file_stat.st_size);
+  response_add_header(
+      res, (header){.name = "Content-Length", .value = content_length_str});
+  response_add_header(res, (header){.name = "Connection", .value = "close"});
 
-    // 2. Send response and file
-    char *raw = response_serialize(res);
-    send(client_fd, raw, strlen(raw), MSG_NOSIGNAL);
-    sendfile(client_fd, file_fd, 0, file_stat.st_size);
-    cmem_free(memory_tag_response, raw);
-    cmem_free(memory_tag_string, content_length_str); // Find some way to get rid of this...
-    /* IDEA:
-    Allocate a buffer that should be big enough, use snprintf, if it fails, allocate enough
-    */
+  // 2. Send response and file
+  char *raw = response_serialize(res);
+  send(client_fd, raw, strlen(raw), MSG_NOSIGNAL);
+  sendfile(client_fd, file_fd, 0, file_stat.st_size);
+  cmem_free(raw);
+  cmem_free(content_length_str); // Find some way to get rid of this...
+  /* IDEA:
+  Allocate a buffer that should be big enough, use snprintf, if it fails,
+  allocate enough
+  */
 
-    close(file_fd);
+  close(file_fd);
 }
 
-void server_destroy(server *s)
-{
-    trie_destroy(s->route_trie);
-    cmem_free(memory_tag_server, s);
+void server_destroy(server *s) {
+  trie_destroy(s->route_trie);
+  cmem_free(s);
 }
 
-void server_run(server *s)
-{
-    // Install SIGPIPE handler to prevent crashes
-    struct sigaction sa;
-    sa.sa_handler = SIG_IGN;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0; // No SA_RESETHAND — disposition stays ignored permanently
-    sigaction(SIGPIPE, &sa, NULL);
+void server_run(server *s) {
+  // Install SIGPIPE handler to prevent crashes
+  struct sigaction sa;
+  sa.sa_handler = SIG_IGN;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0; // No SA_RESETHAND — disposition stays ignored permanently
+  sigaction(SIGPIPE, &sa, NULL);
 
-    LOG_INFO("Starting server...");
-    LOG_INFO("Setting up socket...");
+  LOG_INFO("Starting server...");
+  LOG_INFO("Setting up socket...");
 
-    s->socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (s->socket_fd == -1)
-    {
-        LOG_FATAL("server_start - Socket creation failed.");
-        return;
-    }
+  s->socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+  if (s->socket_fd == -1) {
+    LOG_FATAL("server_start - Socket creation failed.");
+    return;
+  }
 
-    int opt = 1;
-    if (setsockopt(s->socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
-    {
-        LOG_FATAL("server_start - setsockopt failed.");
-        close(s->socket_fd);
-        return;
-    }
-
-    const struct sockaddr_in addr = {
-        .sin_family = AF_INET,
-        .sin_port = htons(8080),
-        .sin_addr.s_addr = INADDR_ANY};
-
-    if (bind(s->socket_fd, &addr, sizeof(addr)) == -1)
-    {
-        LOG_FATAL("server_start - Bind failed.");
-        close(s->socket_fd);
-        return;
-    }
-
-    socklen_t len = sizeof(addr);
-    getsockname(s->socket_fd, (struct sockaddr *)&addr, &len);
-
-    if (listen(s->socket_fd, 512) == -1)
-    {
-        LOG_FATAL("server_start - Listen failed.");
-        close(s->socket_fd);
-        return;
-    }
-
-    LOG_INFO("Setting up io_uring...");
-
-    s->uring.pool_alloc_ctx = pool_allocator_create(sizeof(uring_context), 64);
-
-    struct io_uring_params params;
-    cmem_zmem(&params, sizeof(params));
-    params.flags |= IORING_SETUP_SQPOLL | IORING_SETUP_SQ_AFF;
-    params.sq_thread_cpu = 3;
-    params.sq_thread_idle = 2000; // 2s timeout
-
-    int ret = io_uring_queue_init_params(QUEUE_DEPTH, &s->uring.ring, &params);
-    if (ret < 0)
-    {
-        LOG_FATAL("server_run - io_uring init failed.");
-        close(s->socket_fd);
-        return;
-    }
-
-    handle_accept_submission(s);
-
-    LOG_INFO("Server listening on port %i.\n\tVisit: http://localhost:%i/index.html", ntohs(addr.sin_port), ntohs(addr.sin_port));
-
-    while (true)
-    {
-        uring_process_completions(s);
-    }
-
+  int opt = 1;
+  if (setsockopt(s->socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) <
+      0) {
+    LOG_FATAL("server_start - setsockopt failed.");
     close(s->socket_fd);
-    io_uring_queue_exit(&s->uring.ring);
+    return;
+  }
 
-    server_destroy(s);
+  const struct sockaddr_in addr = {.sin_family = AF_INET,
+                                   .sin_port = htons(8080),
+                                   .sin_addr.s_addr = INADDR_ANY};
+
+  if (bind(s->socket_fd, &addr, sizeof(addr)) == -1) {
+    LOG_FATAL("server_start - Bind failed.");
+    close(s->socket_fd);
+    return;
+  }
+
+  socklen_t len = sizeof(addr);
+  getsockname(s->socket_fd, (struct sockaddr *)&addr, &len);
+
+  if (listen(s->socket_fd, 512) == -1) {
+    LOG_FATAL("server_start - Listen failed.");
+    close(s->socket_fd);
+    return;
+  }
+
+  LOG_INFO("Setting up io_uring...");
+
+  s->uring.pool_alloc_ctx = pool_allocator_create(sizeof(uring_context), 64);
+
+  struct io_uring_params params;
+  cmem_zmem(&params, sizeof(params));
+  params.flags |= IORING_SETUP_SQPOLL | IORING_SETUP_SQ_AFF;
+  params.sq_thread_cpu = 3;
+  params.sq_thread_idle = 2000; // 2s timeout
+
+  int ret = io_uring_queue_init_params(QUEUE_DEPTH, &s->uring.ring, &params);
+  if (ret < 0) {
+    LOG_FATAL("server_run - io_uring init failed.");
+    close(s->socket_fd);
+    return;
+  }
+
+  handle_accept_submission(s);
+
+  LOG_INFO(
+      "Server listening on port %i.\n\tVisit: http://localhost:%i/index.html",
+      ntohs(addr.sin_port), ntohs(addr.sin_port));
+
+  while (true) {
+    uring_process_completions(s);
+  }
+
+  close(s->socket_fd);
+  io_uring_queue_exit(&s->uring.ring);
+
+  server_destroy(s);
 }
