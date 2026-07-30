@@ -1,5 +1,6 @@
 #include "io_uring_helper.h"
 
+#include "core/containers/LRU_cache.h"
 #include "core/util/logger.h"
 #include "core/util/profiler.h"
 #include "network/http/request.h"
@@ -8,6 +9,17 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <string.h>
+
+typedef struct uring_helper_ctx {
+  LRU_cache *file_cache;
+  struct io_uring *ring;
+} uring_helper_ctx;
+
+uring_helper_ctx state;
+
+void file_eviction_handler(void *fd) {
+  handle_close_submission(state.ring, *((int *)fd));
+}
 
 void uring_process_completions(server *srv) {
   struct io_uring_cqe *cqe;
@@ -73,8 +85,6 @@ void handle_accept_completion(struct io_uring_cqe *cqe, uring_context *ctx) {
   }
 }
 
-// TODO: If I were to pass ring as an argument, does it reduce lookup time,
-// since it will never leave the registers?
 void handle_recv_submission(uring_context *ctx) {
   struct io_uring_sqe *sqe = io_uring_get_sqe(&ctx->srv->uring.ring);
   ctx->op_type = uring_op_type_recv;
@@ -87,6 +97,7 @@ void handle_recv_submission(uring_context *ctx) {
   io_uring_submit(&ctx->srv->uring.ring);
 }
 
+// TODO: Logic through this more in-depth, leave more comments
 // TODO: Eventually should flush all requests within a read, not just the first
 // one.
 void handle_recv_completion(struct io_uring_cqe *cqe, uring_context *ctx) {
@@ -95,45 +106,50 @@ void handle_recv_completion(struct io_uring_cqe *cqe, uring_context *ctx) {
     LOG_ERROR("handle_recv_completion - Standard linux error.");
     return;
   } else if (bytes_read == 0) {
-    LOG_DEBUG("handle_recv_completion - Client closed connection.");
+    LOG_DEBUG("handle_recv_completion - Client closed connection. Feature not "
+              "yet implemeented.");
     return;
   }
 
-  int parse_result;
-  do {
-    parse_result =
-        request_parse(ctx->request.buffer, bytes_read, &ctx->request.request);
+  int parse_result =
+      request_parse(ctx->request.buffer, bytes_read, &ctx->request.request);
 
-    if (parse_result < 0) {
-      // TODO: send error
-      LOG_ERROR("handle_recv_completion - Error parsing, need to figure out "
-                "how to flush the buffer safely.");
-      return;
-    } else if (parse_result == 0) {
-      if (ctx->request.offset + bytes_read > BUFFER_SIZE) {
-        LOG_ERROR("handle_recv_completion - Attempted to overflow buffer.");
-      } else {
-        ctx->request.offset += bytes_read;
-      }
-
-      handle_recv_submission(ctx);
+  if (parse_result < 0) {
+    // TODO: send error
+    LOG_ERROR("handle_recv_completion - Error parsing, need to figure out "
+              "how to flush the buffer safely.");
+    return;
+  } else if (parse_result == 0) { // Not everything arrived, need more data.
+    if (ctx->request.offset + bytes_read > BUFFER_SIZE) {
+      LOG_ERROR("handle_recv_completion - Attempted to overflow buffer.");
     } else {
-      cmem_mcpy(ctx->request.buffer, ctx->request.buffer + parse_result,
-                ctx->request.offset - parse_result);
-      ctx->request.offset -= parse_result;
-      bytes_read -= parse_result;
-
-      profile_operation("router_handle_request",
-                        router_handle_request(ctx->srv->rtr,
-                                              &ctx->request.request,
-                                              ctx->client.fd););
+      ctx->request.offset += bytes_read;
     }
-  } while (parse_result != 0); // TODO: Figure out how to flush all requests
-                               // from the buffer and attempt to parse them.
+
+    handle_recv_submission(ctx);
+  } else {
+    cmem_mcpy(ctx->request.buffer,
+              ctx->request.buffer + ctx->request.offset + bytes_read,
+              BUFFER_SIZE - (ctx->request.offset + bytes_read));
+    ctx->request.offset -= parse_result;
+    router_handle_request(ctx->srv->rtr, &ctx->request.request, ctx->client.fd);
+  }
 }
 
 // TODO: Eventually implement some sort of LRU_cache
 void handle_openat_submission(uring_context *ctx, char *path) {
+  // Check to see if state is setup, eventually move this somewhere so it isn't
+  // checked every single time
+  if (state.file_cache == NULL) {
+    state.file_cache = LRU_cache_create(16, sizeof(int), file_eviction_handler);
+  }
+  if (state.ring == NULL) {
+    state.ring = &ctx->srv->uring.ring;
+  }
+
+  int *fd = LRU_cache_get(state.file_cache, path);
+  if (fd != NULL) {
+  }
 
   struct io_uring_sqe *sqe = io_uring_get_sqe(&ctx->srv->uring.ring);
   ctx->op_type = uring_op_type_openat;
@@ -186,12 +202,7 @@ void handle_send_completion(struct io_uring_cqe *cqe, uring_context *ctx) {
     return;
   }
 
-  handle_close_submission(
-      &ctx->srv->uring.ring,
-      ctx->client.fd); // TODO: Please note that you need to take care of file
-                       // desccriptors here
-  // The best solution is probably to wrap the openat with an check to an
-  // internal file_fd cache.
+  handle_close_submission(&ctx->srv->uring.ring, ctx->client.fd);
 }
 
 void handle_sendfile_submission(uring_context *ctx) {

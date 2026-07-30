@@ -73,7 +73,8 @@ doubly_linked_list_node *doubly_linked_list_get(doubly_linked_list *dll,
 }
 
 // Insert
-void doubly_linked_list_push_front(doubly_linked_list *dll, void *data) {
+doubly_linked_list_node *doubly_linked_list_push_front(doubly_linked_list *dll,
+                                                       void *data) {
   doubly_linked_list_node *new_node =
       doubly_linked_list_node_create(dll->stride);
   cmem_mcpy(new_node->data, data, dll->stride);
@@ -84,9 +85,12 @@ void doubly_linked_list_push_front(doubly_linked_list *dll, void *data) {
   new_node->prev = NULL;
 
   dll->length++;
+
+  return new_node;
 }
 
-void doubly_linked_list_push_back(doubly_linked_list *dll, void *data) {
+doubly_linked_list_node *doubly_linked_list_push_back(doubly_linked_list *dll,
+                                                      void *data) {
 
   doubly_linked_list_node *new_node =
       doubly_linked_list_node_create(dll->stride);
@@ -98,10 +102,12 @@ void doubly_linked_list_push_back(doubly_linked_list *dll, void *data) {
   new_node->next = NULL;
 
   dll->length++;
+
+  return new_node;
 }
 
 // Remove
-void doubly_linked_list_pop_front(doubly_linked_list *dll, void *data) {
+void doubly_linked_list_pop_head(doubly_linked_list *dll, void *data) {
   if (dll->length == 0) {
     LOG_ERROR("doubly_linked_list_pop_front - length is zero.");
     return;
@@ -123,7 +129,7 @@ void doubly_linked_list_pop_front(doubly_linked_list *dll, void *data) {
   dll->length--;
 }
 
-void doubly_linked_list_pop_back(doubly_linked_list *dll, void *data) {
+void doubly_linked_list_pop_tail(doubly_linked_list *dll, void *data) {
   if (dll->length == 0) {
     LOG_ERROR("doubly_linked_list_pop_front - length is zero.");
     return;

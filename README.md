@@ -13,9 +13,6 @@ A high performance webserver made for linux first, should eventually also be abl
 - use GnuTLS for the SSL handshake
 - Uploading/Downloading Files
 
-## Ideas
-- add an optional pool to the linked list.
-
 ## Prerequisites
 
 - make

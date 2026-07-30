@@ -23,9 +23,10 @@ doubly_linked_list_node *doubly_linked_list_get(doubly_linked_list *dll,
                                                 int index);
 
 // Insert
-void doubly_linked_list_push_front(doubly_linked_list *dll, void *data);
-void doubly_linked_list_push_back(doubly_linked_list *dll, void *data);
-
+doubly_linked_list_node *doubly_linked_list_push_front(doubly_linked_list *dll,
+                                                       void *data);
+doubly_linked_list_node *doubly_linked_list_push_back(doubly_linked_list *dll,
+                                                      void *data);
 // Remove
 // Caller needs to allocate memory into which the data should be copied.
 void doubly_linked_list_pop_head(doubly_linked_list *dll, void *data);
