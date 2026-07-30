@@ -121,6 +121,7 @@ void handle_recv_completion(struct io_uring_cqe *cqe, uring_context *ctx) {
       cmem_mcpy(ctx->request.buffer, ctx->request.buffer + parse_result,
                 ctx->request.offset - parse_result);
       ctx->request.offset -= parse_result;
+      bytes_read -= parse_result;
 
       profile_operation("router_handle_request",
                         router_handle_request(ctx->srv->rtr,
