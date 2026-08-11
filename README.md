@@ -4,11 +4,8 @@ A high performance webserver made for linux first, should eventually also be abl
 
 ## TODO
 
-- switch reading into a fixed-size buffer, into instead an darray
 - finish io_uring state machine
-- create the LRU cache
 - create the filemap hashmap
-- Go through includes in server.c
 - Bring back server config
 - use GnuTLS for the SSL handshake
 - Uploading/Downloading Files
@@ -21,7 +18,7 @@ A high performance webserver made for linux first, should eventually also be abl
 
 ## Features
 
-A prerelease version is working!
+A prerelease version is(was) working!
 
 - Can host a dynamic website
 - Only allows for GET requests
@@ -32,17 +29,21 @@ A prerelease version is working!
 - filesystem
 - updated filesystem and request handling with io_uring on linux to up performance
 
-## Benchmark
+## Benchmark (currently removed)
 
 For a report to be created all unit tests must have passed as well as the smoke test. Specific stats are for a peak load test with the arguments seen in the report. Note that key changes since the last report are included.
 
 ## Structure
 
-Create a server, set it up, run it (more in depth documentation coming, for now just check out the default/example project).
+Create a router, the router provides a function that parses requests into readable form for it. Create a server_config (passing the router here), use this to create a server. The server exposes it's server_interface to the router, letting it know what commands it can call (sending, closing, etc.). Then run the server.
 
-### Server
+### router
 
-The server parses requests into structures and passes them on to the router you passed it. This is also where you define stuff like protocols, ports, etc.
+The router handles routing based on the parsing function it requests the data to be parsed into. Internally it stores any dynamic routes in an trie, and static through an hashmap of the public directory.
+
+### server
+
+The server handles network, and general IO. (A lot.)
 
 ### Request
 

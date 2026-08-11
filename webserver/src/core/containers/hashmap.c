@@ -3,8 +3,6 @@
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
 
-#include <string.h>
-
 size_t hash_fnv1a(const char *key) {
   size_t hash = 14695981039346656037ULL;
   while (*key) {

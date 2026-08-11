@@ -21,6 +21,15 @@ void file_eviction_handler(void *fd) {
   handle_close_submission(state.ring, *((int *)fd));
 }
 
+void uring_setup() {
+  if (!state) {
+    if (!state.file_cache) {
+      
+    }
+  }
+}
+void uring_shutdown();
+
 void uring_process_completions(server *srv) {
   struct io_uring_cqe *cqe;
 
@@ -50,10 +59,10 @@ void uring_process_completions(server *srv) {
   }
 }
 
+// TODO: Make this just use the normal allocator, don't want weird bugs yet.
 void handle_accept_submission(server *srv) {
   struct io_uring_sqe *sqe = io_uring_get_sqe(&srv->uring.ring);
 
-  uring_context *ctx = pool_allocator_alloc(srv->uring.pool_alloc_ctx);
   if (!ctx)
     LOG_FATAL(
         "handle_accept_submission - Requesting another ctx struct failed.");
@@ -97,7 +106,6 @@ void handle_recv_submission(uring_context *ctx) {
   io_uring_submit(&ctx->srv->uring.ring);
 }
 
-// TODO: Logic through this more in-depth, leave more comments
 // TODO: Eventually should flush all requests within a read, not just the first
 // one.
 void handle_recv_completion(struct io_uring_cqe *cqe, uring_context *ctx) {
@@ -112,27 +120,33 @@ void handle_recv_completion(struct io_uring_cqe *cqe, uring_context *ctx) {
   }
 
   int parse_result =
-      request_parse(ctx->request.buffer, bytes_read, &ctx->request.request);
+      request_parse(ctx->request.buffer, ctx->request.offset + bytes_read,
+                    &ctx->request.request);
 
   if (parse_result < 0) {
     // TODO: send error
     LOG_ERROR("handle_recv_completion - Error parsing, need to figure out "
               "how to flush the buffer safely.");
     return;
-  } else if (parse_result == 0) { // Not everything arrived, need more data.
-    if (ctx->request.offset + bytes_read > BUFFER_SIZE) {
-      LOG_ERROR("handle_recv_completion - Attempted to overflow buffer.");
+  } else { // Not everything arrived, need more data.
+    if (parse_result == 0) {
+      if (ctx->request.offset + bytes_read > BUFFER_SIZE) {
+        LOG_ERROR("handle_recv_completion - Attempted to overflow buffer.");
+      } else {
+        ctx->request.offset += bytes_read;
+      }
+
+      handle_recv_submission(ctx);
+      return;
     } else {
       ctx->request.offset += bytes_read;
+      cmem_mcpy(ctx->request.buffer,
+                ctx->request.buffer + ctx->request.offset + bytes_read,
+                BUFFER_SIZE - (ctx->request.offset + bytes_read));
+      ctx->request.offset -= parse_result;
+      router_handle_request(ctx->srv->rtr, &ctx->request.request,
+                            ctx->client.fd);
     }
-
-    handle_recv_submission(ctx);
-  } else {
-    cmem_mcpy(ctx->request.buffer,
-              ctx->request.buffer + ctx->request.offset + bytes_read,
-              BUFFER_SIZE - (ctx->request.offset + bytes_read));
-    ctx->request.offset -= parse_result;
-    router_handle_request(ctx->srv->rtr, &ctx->request.request, ctx->client.fd);
   }
 }
 

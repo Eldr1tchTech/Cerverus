@@ -1,22 +1,16 @@
 #include "server.h"
 
-#include "defines.h"
-
 #include "network_types.inl"
 
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
 #include "core/util/profiler.h"
 #include "core/util/util.h"
-#include "network/async/io_uring_helper.h"
-#include "network/http/request.h"
+#include "network/IO/io_uring_helper.h"
 #include "network/http/response.h"
 #include "network/network_util.h"
-#include "network/routing/route.h"
-#include "network/routing/route_trie.h"
 
 #include <arpa/inet.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <signal.h>
@@ -32,7 +26,6 @@
 server *server_create(server_config *s_conf) {
   server *s = cmem_alloc(sizeof(server));
   s->conf = s_conf;
-  s->route_trie = trie_create();
   s->rtr = router_create();
 
   return s;
@@ -73,12 +66,10 @@ void send_file_response(int client_fd, int file_fd, int status_code,
   close(file_fd);
 }
 
-void server_destroy(server *s) {
-  trie_destroy(s->route_trie);
-  cmem_free(s);
-}
+void server_destroy(server *s) { cmem_free(s); }
 
-void server_run(server *s) {
+bool server_setup(server *srv) {
+
   // Install SIGPIPE handler to prevent crashes
   struct sigaction sa;
   sa.sa_handler = SIG_IGN;
@@ -89,36 +80,46 @@ void server_run(server *s) {
   LOG_INFO("Starting server...");
   LOG_INFO("Setting up socket...");
 
-  s->socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-  if (s->socket_fd == -1) {
+  srv->socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+  if (srv->socket_fd == -1) {
     LOG_FATAL("server_start - Socket creation failed.");
-    return;
+    return false;
   }
 
   int opt = 1;
-  if (setsockopt(s->socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) <
+  if (setsockopt(srv->socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) <
       0) {
     LOG_FATAL("server_start - setsockopt failed.");
-    close(s->socket_fd);
-    return;
+    close(srv->socket_fd);
+    return false;
   }
 
   const struct sockaddr_in addr = {.sin_family = AF_INET,
                                    .sin_port = htons(8080),
                                    .sin_addr.s_addr = INADDR_ANY};
 
-  if (bind(s->socket_fd, &addr, sizeof(addr)) == -1) {
+  if (bind(srv->socket_fd, &addr, sizeof(addr)) == -1) {
     LOG_FATAL("server_start - Bind failed.");
-    close(s->socket_fd);
-    return;
+    close(srv->socket_fd);
+    return false;
   }
 
   socklen_t len = sizeof(addr);
-  getsockname(s->socket_fd, (struct sockaddr *)&addr, &len);
+  getsockname(srv->socket_fd, (struct sockaddr *)&addr, &len);
 
-  if (listen(s->socket_fd, 512) == -1) {
+  if (listen(srv->socket_fd, 512) == -1) {
     LOG_FATAL("server_start - Listen failed.");
-    close(s->socket_fd);
+    close(srv->socket_fd);
+    return false;
+  }
+
+  LOG_INFO("server_setup - Successful.");
+  return true;
+}
+
+void server_run(server *srv) {
+
+  if (!server_setup(srv)) {
     return;
   }
 
@@ -135,22 +136,22 @@ void server_run(server *s) {
   int ret = io_uring_queue_init_params(QUEUE_DEPTH, &s->uring.ring, &params);
   if (ret < 0) {
     LOG_FATAL("server_run - io_uring init failed.");
-    close(s->socket_fd);
+    close(srv->socket_fd);
     return;
   }
 
-  handle_accept_submission(s);
+  handle_accept_submission(srv);
 
   LOG_INFO(
       "Server listening on port %i.\n\tVisit: http://localhost:%i/index.html",
       ntohs(addr.sin_port), ntohs(addr.sin_port));
 
   while (true) {
-    uring_process_completions(s);
+    uring_process_completions(srv);
   }
 
-  close(s->socket_fd);
-  io_uring_queue_exit(&s->uring.ring);
+  close(srv->socket_fd);
+  io_uring_queue_exit(&srv->uring.ring);
 
-  server_destroy(s);
+  server_destroy(srv);
 }

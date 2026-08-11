@@ -1,39 +1,36 @@
 #pragma once
 
-#include "network/network_types.inl"
-
-#include "core/containers/darray.h"
-#include "network/routing/route_trie.h"
-#include "network/routing/router.h"
-#include "core/memory/pool_allocator.h"
 #include "core/containers/LRU_cache.h"
+#include "core/memory/pool_allocator.h"
+#include "network/routing/router.h"
 
-#include <signal.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <liburing.h>
+#include <sys/stat.h>
 
-typedef struct server_config
-{
-    int port;
+typedef struct server_config {
+  int port;
 } server_config;
 
-typedef struct server
-{
-    int socket_fd;
-    trie* route_trie;
-    struct
-    {
-        struct io_uring ring;
-        pool_allocator* pool_alloc_ctx;
-        LRU_cache* LRU_fd_cache;
-    } uring;
-    server_config* conf;
-    router* rtr;
+// TODO: complete this
+typedef struct server_interface {
+  void (*send_file)();
+} server_interface;
+
+typedef struct server {
+  int socket_fd;
+  struct {
+    struct io_uring ring;
+    pool_allocator *pool_alloc_ctx;
+    LRU_cache *LRU_fd_cache;
+  } uring;
+  server_config *conf;
+  router *rtr;
 } server;
 
-server* server_create(server_config* s_conf);
+server *server_create(server_config *s_conf);
 
-void server_run(server* s);
+void server_run(server *s);
 
-void send_file_response(int client_fd, int file_fd, int status_code, const char *reason_phrase, char *ext);
+void send_file_response(int client_fd, int file_fd, int status_code,
+                        const char *reason_phrase, char *ext);

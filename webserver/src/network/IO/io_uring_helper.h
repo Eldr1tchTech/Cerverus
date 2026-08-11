@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/containers/LRU_cache.h"
 #include "network/server.h"
 #include <liburing.h>
 
@@ -13,6 +14,11 @@ typedef enum uring_op_type {
   uring_op_type_sendfile,
   uring_op_type_close,
 } uring_op_type;
+
+typedef struct uring_helper_wrapper {
+  struct io_uring ring;
+  LRU_cache *file_cache;
+} uring_helper_wrapper;
 
 // This is what you store in set_data() - contains everything needed
 // to resume when the operation completes
@@ -44,6 +50,9 @@ typedef struct uring_close_context {
 } uring_close_context;
 
 void uring_process_completions(server *srv);
+
+void uring_setup();
+void uring_shutdown();
 
 void handle_accept_submission(server *srv);
 void handle_accept_completion(struct io_uring_cqe *cqe, uring_context *ctx);

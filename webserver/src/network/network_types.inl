@@ -36,11 +36,7 @@ typedef struct request {
     char *URI;
     http_version version;
   } request_line;
-  struct {
-
-    header headers[MAX_HEADER_COUNT];
-    size_t header_count;
-  } headers;
+  darray *headers;
   struct {
     char *data;
     size_t body_size;
