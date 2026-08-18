@@ -15,7 +15,6 @@
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdbool.h>
-#include <string.h>
 #include <sys/sendfile.h>
 #include <sys/socket.h>
 #include <sys/stat.h>

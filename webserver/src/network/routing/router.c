@@ -4,8 +4,6 @@
 #include "core/util/util.h"
 #include "network/routing/route_trie.h"
 
-#include <string.h>
-
 router *router_create() {
   router *rtr = cmem_alloc(sizeof(router));
 

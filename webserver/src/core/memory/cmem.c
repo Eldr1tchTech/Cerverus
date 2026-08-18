@@ -1,5 +1,6 @@
 #include "cmem.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 void *cmem_alloc(size_t size) {

@@ -3,7 +3,6 @@
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
 
-#include <string.h>
 #include <sys/types.h>
 
 #define REQUEST_PARSE_INVALID INT_MIN

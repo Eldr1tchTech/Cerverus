@@ -4,8 +4,6 @@
 #include "core/util/logger.h"
 #include "core/util/util.h"
 
-#include <string.h>
-
 darray *parse_URI(char *URI) {
   darray *new_darr = darray_create(strchrc(URI, '/'), sizeof(route_segment));
 

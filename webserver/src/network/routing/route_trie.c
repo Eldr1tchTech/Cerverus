@@ -4,7 +4,6 @@
 #include "core/util/util.h"
 #include "network/network_util.h"
 
-#include <string.h>
 
 trie_node *trie_node_create() {
   trie_node *new_node = cmem_alloc(sizeof(trie_node));

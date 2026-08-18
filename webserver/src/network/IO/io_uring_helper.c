@@ -8,7 +8,6 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <string.h>
 
 typedef struct uring_helper_ctx {
   LRU_cache *file_cache;

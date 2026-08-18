@@ -4,7 +4,6 @@
 #include "core/util/logger.h"
 
 #include <stdio.h>
-#include <string.h>
 
 char *serialize_http_version(http_version version) {
   switch (version) {

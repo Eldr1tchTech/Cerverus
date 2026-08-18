@@ -2,6 +2,8 @@
 
 typedef unsigned long size_t;
 
+#define NULL (void*)0
+
 #if defined(_WIN32) || defined(_WIN64)
 #define PLATFORM_WINDOWS
 #elif defined(__linux__)
