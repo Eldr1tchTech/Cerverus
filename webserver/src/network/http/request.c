@@ -1,5 +1,6 @@
 #include "request.h"
 
+#include "core/containers/string.h"
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
 
@@ -8,24 +9,24 @@
 #define REQUEST_PARSE_INVALID INT_MIN
 
 // TODO: Properly handle http_method_unknown parsing
-http_method parse_http_method(char *raw_method) {
-  if (strcmp(raw_method, "GET") == 0) {
+http_method parse_http_method(const string raw_method) {
+  if (string_equal_literal(raw_method, "GET")) {
     return http_method_get;
-  } else if (strcmp(raw_method, "HEAD") == 0) {
+  } else if (string_equal_literal(raw_method, "HEAD")) {
     return http_method_head;
-  } else if (strcmp(raw_method, "OPTIONS") == 0) {
+  } else if (string_equal_literal(raw_method, "OPTIONS")) {
     return http_method_options;
-  } else if (strcmp(raw_method, "TRACE") == 0) {
+  } else if (string_equal_literal(raw_method, "TRACE")) {
     return http_method_trace;
-  } else if (strcmp(raw_method, "PUT") == 0) {
+  } else if (string_equal_literal(raw_method, "PUT")) {
     return http_method_put;
-  } else if (strcmp(raw_method, "DELETE") == 0) {
+  } else if (string_equal_literal(raw_method, "DELETE")) {
     return http_method_delete;
-  } else if (strcmp(raw_method, "POST") == 0) {
+  } else if (string_equal_literal(raw_method, "POST")) {
     return http_method_post;
-  } else if (strcmp(raw_method, "PATCH") == 0) {
+  } else if (string_equal_literal(raw_method, "PATCH")) {
     return http_method_patch;
-  } else if (strcmp(raw_method, "CONNECT") == 0) {
+  } else if (string_equal_literal(raw_method, "CONNECT")) {
     return http_method_connect;
   }
   LOG_DEBUG("parse_http_method - Unable to parse an http_method from the "
@@ -35,7 +36,7 @@ http_method parse_http_method(char *raw_method) {
 }
 
 http_version parse_http_version(char *raw_version) {
-  if (strcmp(raw_version, "HTTP/1.1") == 0) {
+  if (string_equal_literal(raw_version, "HTTP/1.1")) {
     return http_version_1p1;
   }
   LOG_DEBUG("parse_http_version - Unable to parse an http_version from the "
@@ -44,7 +45,7 @@ http_version parse_http_version(char *raw_version) {
   return http_version_unknown;
 }
 
-void parse_request_line(request *req, char *raw_req_lin) {
+void parse_request_line(request *req, string raw_req_lin) {
   req->request_line.method = parse_http_method(strtok(raw_req_lin, " "));
 
   char *URI_val = strtok(NULL, " ");

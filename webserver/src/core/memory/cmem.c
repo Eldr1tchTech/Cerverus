@@ -14,3 +14,7 @@ void cmem_free(void *block) { free(block); }
 void cmem_zmem(void *block, size_t size) { memset(block, 0, size); }
 
 void cmem_mcpy(void *dest, void *src, size_t size) { memcpy(dest, src, size); }
+
+void cmem_memmove(void *dest, const void *src, size_t size) {
+  memmove(dest, src, size);
+}
