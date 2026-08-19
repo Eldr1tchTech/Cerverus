@@ -4,6 +4,8 @@ A high performance webserver made for linux first, should eventually also be abl
 
 ## TODO
 
+- finish refactoring the project to use the new string library
+- refactor darray to be header based
 - finish io_uring state machine
 - create the filemap hashmap
 - Bring back server config

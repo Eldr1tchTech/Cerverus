@@ -4,6 +4,7 @@
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
 
+#include <stddef.h>
 #include <sys/types.h>
 
 #define REQUEST_PARSE_INVALID INT_MIN
@@ -35,7 +36,7 @@ http_method parse_http_method(const string raw_method) {
   return http_method_unknown;
 }
 
-http_version parse_http_version(char *raw_version) {
+http_version parse_http_version(string raw_version) {
   if (string_equal_literal(raw_version, "HTTP/1.1")) {
     return http_version_1p1;
   }
@@ -46,48 +47,32 @@ http_version parse_http_version(char *raw_version) {
 }
 
 void parse_request_line(request *req, string raw_req_lin) {
-  req->request_line.method = parse_http_method(strtok(raw_req_lin, " "));
+  string raw_method = string_empty();
+  string raw_version = string_empty();
 
-  char *URI_val = strtok(NULL, " ");
-  req->request_line.URI = cmem_alloc((strlen(URI_val) + 1) * sizeof(char));
-  strcpy(req->request_line.URI, URI_val);
+  string_parse_format(raw_req_lin, "%s %s %s", &raw_method,
+                      &req->request_line.URI, &raw_version);
 
-  req->request_line.version = parse_http_version(strtok(NULL, "\0"));
+  req->request_line.method = parse_http_method(raw_method);
+  req->request_line.version = parse_http_version(raw_version);
 }
 
-void parse_headers(request *req, char *raw_headers) {
-  if (!raw_headers || strlen(raw_headers) == 0) {
-    req->headers.header_count = 0;
+void parse_headers(request *req, string raw_headers) {
+  req->headers = darray_create(16, sizeof(header));
+
+  req->headers->length = 0;
+  if (string_get_length(raw_headers) == 0) {
     return;
   }
 
-  char *line = strtok(raw_headers, "\r\n");
-  req->headers.header_count = 0;
+  darray *raw_headers_darr = string_split_at_literal(raw_headers, "\r\n");
 
-  while (line != NULL) {
-    header *h = &req->headers.headers[req->headers.header_count];
-
-    // Find the colon separator
-    char *colon = strchr(line, ':');
-    if (colon != NULL) {
-      // Split at the colon
-      *colon = '\0';
-
-      // Header name is everything before the colon
-      h->name = line;
-
-      // Header value is everything after the colon (skip leading space)
-      char *value = colon + 1;
-      while (*value == ' ') {
-        value++;
-      }
-      h->value = value;
-      req->headers.header_count++;
-    } else {
-      LOG_DEBUG("parse_headers - Malformed header line: %s", line);
-    }
-
-    line = strtok(NULL, "\r\n");
+  string *raw_headers_darr_data = raw_headers_darr->data;
+  for (size_t i = 0; i < raw_headers_darr->length; i++) {
+    header new_header;
+    string_parse_format(raw_headers_darr_data[i], "%s: %s", &new_header.name,
+                        &new_header.value);
+    darray_add(req->headers, &new_header);
   }
 }
 

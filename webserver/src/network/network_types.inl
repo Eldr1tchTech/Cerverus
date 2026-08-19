@@ -49,10 +49,7 @@ typedef struct response {
     int status_code;
     string reason_phrase;
   } status_line;
-  struct {
-    header headers[MAX_HEADER_COUNT];
-    size_t header_count;
-  } headers;
+  darray *headers;
   struct {
     string data;
     size_t body_size;
