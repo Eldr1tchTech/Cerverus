@@ -37,10 +37,7 @@ typedef struct request {
     http_version version;
   } request_line;
   darray *headers;
-  struct {
-    string data;
-    size_t body_size;
-  } body;
+  string body;
 } request;
 
 typedef struct response {
@@ -50,10 +47,7 @@ typedef struct response {
     string reason_phrase;
   } status_line;
   darray *headers;
-  struct {
-    string data;
-    size_t body_size;
-  } body;
+  string body;
 } response;
 
 typedef void (*route_callback)(request *req, int client_fd);

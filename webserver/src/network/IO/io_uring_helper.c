@@ -23,7 +23,6 @@ void file_eviction_handler(void *fd) {
 void uring_setup() {
   if (!state) {
     if (!state.file_cache) {
-      
     }
   }
 }
@@ -118,9 +117,8 @@ void handle_recv_completion(struct io_uring_cqe *cqe, uring_context *ctx) {
     return;
   }
 
-  int parse_result =
-      request_parse(ctx->request.buffer, ctx->request.offset + bytes_read,
-                    &ctx->request.request);
+  int parse_result = request_parse(&ctx->request.request, ctx->request.buffer,
+                                   ctx->request.offset + bytes_read);
 
   if (parse_result < 0) {
     // TODO: send error

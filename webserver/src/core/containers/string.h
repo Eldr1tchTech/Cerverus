@@ -20,10 +20,16 @@ size_t string_get_length(string str);
 size_t string_get_capacity(string str);
 
 // Creating
+string _string_create_length(char *str, size_t length);
 string string_create(char *str);
 string string_duplicate(string str);
 string string_empty();
 void string_destroy(string str);
+
+// Search
+int _string_find(string str, const char *delim, size_t delim_len);
+#define _string_find_literal(str, lit)                                         \
+  _string_find(str, lit, STRING_LITERAL_LENGTH(lit))
 
 // Comparisons
 bool _raw_string_equal_length(const char *str1, size_t len1, const char *str2,
@@ -33,7 +39,8 @@ bool string_equal(const string str1, const string str2);
   _raw_string_equal_length((s), string_get_length(s), (lit),                   \
                            STRING_LITERAL_LENGTH(lit))
 
-// Formatting
+// Parsing/Converting
+bool string_parse_u64(string str, u64 *out);
 
 /**
  * @brief Splits str at the first occurence of delim. str contains the contents

@@ -54,7 +54,9 @@ void parse_request_line(request *req, string raw_req_lin) {
                       &req->request_line.URI, &raw_version);
 
   req->request_line.method = parse_http_method(raw_method);
+  string_destroy(raw_method);
   req->request_line.version = parse_http_version(raw_version);
+  string_destroy(raw_version);
 }
 
 void parse_headers(request *req, string raw_headers) {
@@ -69,17 +71,24 @@ void parse_headers(request *req, string raw_headers) {
 
   string *raw_headers_darr_data = raw_headers_darr->data;
   for (size_t i = 0; i < raw_headers_darr->length; i++) {
+
     header new_header;
     string_parse_format(raw_headers_darr_data[i], "%s: %s", &new_header.name,
                         &new_header.value);
     darray_add(req->headers, &new_header);
+
+    string_destroy(raw_headers_darr_data[i]);
   }
+
+  darray_destroy(raw_headers_darr);
 }
 
 // TODO: Malformed/Malicious request handling.
-int request_parse(char *raw_req, size_t req_len, request *req) {
-  char *header_terminator = strstr(raw_req, "\r\n\r\n");
-  if (header_terminator == NULL) {
+// TODO: Resolve memory leak, destroy raw_req before returning in any path.
+int request_parse(request *req, char *raw_req, size_t req_len) {
+  raw_req = string_create(raw_req);
+  int header_terminator = _string_find_literal(raw_req, "\r\n\r\n");
+  if (header_terminator == -1) {
     if (req_len >= 1892 - 1) // TODO: revisit this
     {
       return -1; // Malformed, headers should be kept below 1892
@@ -87,15 +96,10 @@ int request_parse(char *raw_req, size_t req_len, request *req) {
       return 0; // Unfinished.
     }
   } else {
-    // fill _raw_buff
-    req->_raw_buff = cmem_alloc(req_len + 1);
-    strcpy(req->_raw_buff, raw_req);
-
     // STATUS LINE
-    char *index = strstr(req->_raw_buff, "\r\n");
-    *index = '\0';
-    parse_request_line(req, req->_raw_buff);
-    char *req_cursor = index + 2;
+    string raw_req_lin = string_split_literal(raw_req, "\r\n");
+    parse_request_line(req, raw_req_lin);
+    string_destroy(raw_req_lin);
 
     // handle malformed.
     http_method method = req->request_line.method; // for later
@@ -105,10 +109,10 @@ int request_parse(char *raw_req, size_t req_len, request *req) {
     }
 
     // HEADERS
-    index = strstr(req_cursor, "\r\n\r\n");
-    *index = '\0';
-    parse_headers(req, req_cursor);
-    req_cursor = index + 4;
+    string raw_headers = string_split_literal(raw_req, "\r\n\r\n");
+    parse_headers(req, raw_headers);
+    string_destroy(raw_headers); // WARN: unsure as to whether this is
+                                 // destroying one of the headers...
 
     char *content_length_header_value =
         request_get_header_value(req, "Content-Length");
@@ -120,28 +124,23 @@ int request_parse(char *raw_req, size_t req_len, request *req) {
         return -1; // Malformed.
       }
 
-      return req_cursor -
-             req->_raw_buff; // Success, change this eventually to flush all
-                             // pending requests in buffer.
+      return header_terminator + 4; // NOTE: is this really correct?
     } else {
       char *content_length_header_value =
           request_get_header_value(req, "Content-Length");
       if (content_length_header_value) {
-        char *endptr = NULL;
-        unsigned long content_length =
-            strtoul(content_length_header_value, &endptr, 10);
 
-        if (endptr == content_length_header_value || *endptr != '\0') {
+        u64 content_length;
+        if (!string_parse_u64(content_length_header_value, &content_length)) {
+          string_destroy(raw_req);
           return -1; // invalid Content-Length
         }
 
-        req->body.data = cmem_alloc(content_length + 1);
-        req->body.body_size = (size_t)content_length;
+        req->body = _string_create_length(raw_req, content_length);
 
-        memcpy(req->body.data, req_cursor, content_length);
-        req->body.data[content_length] = '\0';
+        string_destroy(raw_req);
 
-        return (req_cursor - req->_raw_buff) + content_length;
+        return header_terminator + 4 + content_length;
       }
     }
   }
@@ -149,18 +148,31 @@ int request_parse(char *raw_req, size_t req_len, request *req) {
 
 void request_destroy(request *req) {
   cmem_free(req->request_line.URI);
-  if (req->body.body_size != 0)
-    cmem_free(req->body.data);
-  cmem_free(req->_raw_buff);
+
+  header *headers_darr_data = req->headers->data;
+  for (size_t i = 0; i < req->headers->length; i++) {
+    string_destroy(headers_darr_data[i].name);
+    string_destroy(headers_darr_data[i].value);
+  }
+  darray_destroy(req->headers);
+
+  if (req->body) {
+    string_destroy(req->body);
+  }
+
   cmem_free(req);
 }
 
-char *request_get_header_value(request *req, char *header_name) {
-  for (size_t i = 0; i < req->headers.header_count; i++) {
-    if (strcmp(req->headers.headers[i].name, header_name) ==
-        0) // TODO: Eventually make case insensitive
+string request_get_header_value(request *req, char *header_name) {
+  header *headers_darr_data = req->headers->data;
+  for (size_t i = 0; i < req->headers->length; i++) {
+    if (_raw_string_equal_length(
+            headers_darr_data[i].name,
+            string_get_length(headers_darr_data[i].name), header_name,
+            raw_string_length(
+                header_name))) // TODO: Eventually make case insensitive
     {
-      return req->headers.headers[i].value;
+      return headers_darr_data[i].value;
     }
   }
   return NULL;

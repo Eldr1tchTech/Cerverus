@@ -15,23 +15,16 @@ char *serialize_http_version(http_version version) {
   }
 }
 
-response *response_create(int b_size) {
+response *response_create() {
   response *new_res = cmem_alloc(sizeof(response));
-  new_res->body.data = cmem_alloc(
-      (b_size + 1) * sizeof(char)); // + 1 to account for null terminator
-  new_res->body.body_size = b_size;
+
+  new_res->headers = darray_create(16, sizeof(header));
 
   return new_res;
 }
 
 void response_add_header(response *res, header h) {
-  if (res->headers.header_count == MAX_HEADER_COUNT) {
-    LOG_ERROR(
-        "response_add_header - Headers already at MAX_HEADER_COUNT. Failing.");
-    return;
-  }
-
-  res->headers.headers[res->headers.header_count++] = h;
+  darray_add(res->headers, &h);
 }
 
 char *response_serialize(response *res) {
@@ -81,16 +74,9 @@ char *response_serialize(response *res) {
                  res->headers.headers[i].name, res->headers.headers[i].value);
   }
 
-  offset += snprintf(raw_res + offset, size - offset, "\r\n");
-
   // BODY
-  if (res->body.body_size > 0) {
-    cmem_mcpy(raw_res + offset, res->body.data, res->body.body_size);
-    offset += res->body.body_size;
-  }
-
-  cmem_free(res->body.data);
-  cmem_free(res);
+  // TODO: body handling has been removed for now, as there is no need until the
+  // server can at least serve static files.
 
   return raw_res;
 }

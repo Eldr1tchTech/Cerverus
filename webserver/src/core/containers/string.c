@@ -93,6 +93,35 @@ bool string_equal(const string str1, const string str2) {
                                   string_get_length(str2));
 }
 
+bool string_parse_u64(string str, u64 *out) {
+  size_t length = string_get_length(str);
+
+  if (length == 0) {
+    return false;
+  }
+
+  u64 value = 0;
+
+  for (size_t i = 0; i < length; i++) {
+    char c = str[i];
+
+    if (c < '0' || c > '9') {
+      return false;
+    }
+
+    u64 digit = (u64)(c - '0');
+
+    if (value > (U64_MAX - digit) / 10) {
+      return false;
+    }
+
+    value = value * 10 + digit;
+  }
+
+  *out = value;
+  return true;
+}
+
 int _string_find(string str, const char *delim, size_t delim_len) {
   size_t length = string_get_length(str);
 
