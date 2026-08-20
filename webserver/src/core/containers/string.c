@@ -12,6 +12,7 @@ typedef struct string_header {
   char data[];
 } string_header;
 
+// Utility
 size_t raw_string_length(const char *str) {
   if (str == NULL)
     return 0;
@@ -38,6 +39,32 @@ size_t string_get_length(string str) { return string_to_header(str)->length; }
 
 size_t string_get_capacity(string str) {
   return string_to_header(str)->capactiy;
+}
+
+size_t string_get_u64_length(u64 n) {
+  size_t length = 1;
+
+  while (n >= 10) {
+    n /= 10;
+    length++;
+  }
+
+  return length;
+}
+
+size_t string_get_i32_length(i32 n) {
+  size_t length = 1;
+
+  while (n >= 10) {
+    n /= 10;
+    length++;
+  }
+
+  if (n < 0) {
+    length++;
+  }
+
+  return length;
 }
 
 // NOTE: When allocating do you want to alignof or pad the allocation/capacity
@@ -229,4 +256,22 @@ bool string_parse_format(string str, const char *fmt, ...) {
 
   va_end(args);
   return true;
+}
+
+void _string_concatenate_string_size(char *str1, size_t *len1, char *str2,
+                                     size_t len2) {
+  cmem_mcpy(&str1[*len1], str2, len2);
+  *len1 += len2;
+  str1[*len1] = '\0';
+}
+
+bool string_concatenate_string(string str1, string str2) {
+  if (string_get_capacity(str1) >
+      string_get_length(str1) + string_get_length(str2)) {
+    _string_concatenate_string_size(str1, &string_to_header(str1)->length, str2,
+                                    string_get_length(str2));
+
+    return true;
+  }
+  return false;
 }

@@ -7,6 +7,8 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long long u64;
 
+typedef signed int i32;
+
 #define U64_MAX ((u64) - 1)
 
 #if defined(_WIN32) || defined(_WIN64)

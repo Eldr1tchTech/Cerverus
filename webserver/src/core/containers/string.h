@@ -19,6 +19,8 @@ size_t raw_string_length(const char *str);
 size_t string_get_length(string str);
 size_t string_get_capacity(string str);
 
+size_t string_get_u64_length(u64 n);
+
 // Creating
 string _string_create_length(char *str, size_t length);
 string string_create(char *str);
@@ -39,7 +41,7 @@ bool string_equal(const string str1, const string str2);
   _raw_string_equal_length((s), string_get_length(s), (lit),                   \
                            STRING_LITERAL_LENGTH(lit))
 
-// Parsing/Converting
+// Parsing
 bool string_parse_u64(string str, u64 *out);
 
 /**
@@ -73,3 +75,21 @@ darray *_string_split_at_size(string str, const char *delim, size_t delim_len);
 
 // TODO: add strict parsing at one point or another.
 bool string_parse_format(string str, const char *format, ...);
+
+// Concatenating
+
+void _string_concatenate_string_size(char *str1, size_t *len1, char *str2,
+                                     size_t len2);
+
+/**
+ * @brief Concatenates str2 onto str1.
+ *
+ * @param str1
+ * @param str2
+ * @return bool If str1 capacity is overflowed, false is returned with no
+ * changes made, otherwise true is returned.
+ */
+bool string_concatenate_string(string str1, string str2);
+#define string_concatenate_string_literal(str1, lit)                           \
+  _string_concatenate_string_size(str1, &(str1 - (sizeof(size_t) * 2)), lit,   \
+                                  STRING_LITERAL_LENGTH(lit))

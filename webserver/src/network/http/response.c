@@ -5,10 +5,14 @@
 
 #include <stdio.h>
 
+// Use string literals for performance boosts
+#define HTTP_VERSION_1P1_LITERAL "HTTP/1.1"
+
 char *serialize_http_version(http_version version) {
   switch (version) {
   case http_version_1p1:
-    return "HTTP/1.1";
+    return HTTP_VERSION_1P1_LITERAL;
+
   default:
     LOG_ERROR("Unable to serialize unknown http_version.");
     return NULL;
@@ -38,20 +42,15 @@ char *response_serialize(response *res) {
   }
 
   // STATUS LINE
-  size += snprintf(
-      NULL, 0, "%s %i %s\r\n", serialize_http_version(res->status_line.version),
-      res->status_line.status_code, res->status_line.reason_phrase);
 
   // HEADERS
-  for (size_t i = 0; i < res->headers.header_count; i++) {
+  header *headers_darr_data = res->headers->data;
+  for (size_t i = 0; i < res->headers->length; i++) {
     size += snprintf(NULL, 0, "%s: %s\r\n", res->headers.headers[i].name,
                      res->headers.headers[i].value);
   }
 
-  size += snprintf(NULL, 0, "\r\n");
-
   // BODY
-  size += res->body.body_size + 1; // For null terminator
 
   // Pass 2: Allocate string and fill it
 
