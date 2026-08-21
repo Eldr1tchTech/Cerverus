@@ -6,9 +6,6 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#define STRING_MAX_PREALLOC                                                    \
-  (1024 * 1024) // 1MB — matches your doubling/linear growth split
-
 typedef struct string_header {
   size_t length;
   size_t capactiy;
@@ -30,7 +27,7 @@ size_t raw_string_length(const char *str) {
 
 // TODO: Make these just use negative array indexes? Need to implement some sort
 // of asserts at one point or another
-string_header *string_to_header(string str) {
+string_header *string_get_header(string str) {
   return (string_header *)(str - sizeof(string_header));
 }
 
@@ -38,10 +35,10 @@ string header_to_string(string_header *wrapper) {
   return (string)wrapper->data;
 }
 
-size_t string_get_length(string str) { return string_to_header(str)->length; }
+size_t string_get_length(string str) { return string_get_header(str)->length; }
 
 size_t string_get_capacity(string str) {
-  return string_to_header(str)->capactiy;
+  return string_get_header(str)->capactiy;
 }
 
 size_t string_get_u64_length(u64 n) {
@@ -103,39 +100,25 @@ string string_empty() {
 }
 
 string string_grow_to(string str, size_t value) {
-  string_header *header = string_to_header(str);
+  string_header *header = string_get_header(str);
 
   if (header->capactiy >= value) {
     return str; // already big enough, no-op
   }
 
-  size_t new_capacity = header->capactiy;
-  if (new_capacity == 0) {
-    new_capacity = value;
-  } else {
-    while (new_capacity < value) {
-      if (new_capacity < STRING_MAX_PREALLOC) {
-        new_capacity *= 2;
-      } else {
-        new_capacity += STRING_MAX_PREALLOC;
-      }
-    }
-  }
-
-  string_header *new_header =
-      cmem_alloc(sizeof(string_header) + new_capacity + 1);
+  string_header *new_header = cmem_alloc(sizeof(string_header) + value + 1);
 
   new_header->length = header->length;
-  new_header->capactiy = new_capacity;
+  new_header->capactiy = value;
   cmem_mcpy(new_header->data, header->data,
             header->length + 1); // includes '\0'
 
-  cmem_free(header);
+  string_destroy(str);
 
   return header_to_string(new_header);
 }
 
-void string_destroy(string str) { cmem_free(string_to_header(str)); }
+void string_destroy(string str) { cmem_free(string_get_header(str)); }
 
 bool _raw_string_equal_length(const char *str1, size_t len1, const char *str2,
                               size_t len2) {
@@ -201,7 +184,7 @@ int _string_find(string str, const char *delim, size_t delim_len) {
 }
 
 void _string_set_length(string str, size_t new_len) {
-  string_to_header(str)->length = new_len;
+  string_get_header(str)->length = new_len;
 }
 
 void string_remove_head(string str, size_t size) {
@@ -294,8 +277,8 @@ bool string_parse_format(string str, const char *fmt, ...) {
   return true;
 }
 
-void _string_concatenate_string_size(char *str1, size_t *len1, char *str2,
-                                     size_t len2) {
+void _string_concatenate_string_size(char *str1, char *str2, size_t len2) {
+  size_t *len1 = &string_get_header(str1)->length;
   cmem_mcpy(&str1[*len1], str2, len2);
   *len1 += len2;
   str1[*len1] = '\0';
@@ -304,10 +287,35 @@ void _string_concatenate_string_size(char *str1, size_t *len1, char *str2,
 bool string_concatenate_string(string str1, string str2) {
   if (string_get_capacity(str1) >
       string_get_length(str1) + string_get_length(str2)) {
-    _string_concatenate_string_size(str1, &string_to_header(str1)->length, str2,
-                                    string_get_length(str2));
+    _string_concatenate_string_size(str1, str2, string_get_length(str2));
 
     return true;
   }
   return false;
+}
+
+// WARN: VIBED
+void string_concatenate_u64(string str, u64 value) {
+  string_header *header = string_get_header(str);
+
+  char digits[20]; // max digits for u64 (18446744073709551615)
+  size_t n = 0;
+
+  if (value == 0) {
+    digits[n++] = '0';
+  } else {
+    while (value > 0) {
+      digits[n++] = '0' + (value % 10);
+      value /= 10;
+    }
+  }
+
+  size_t pos = header->length;
+  for (size_t i = 0; i < n; i++) {
+    str[pos + i] = digits[n - 1 - i]; // reverse while copying out
+  }
+
+  pos += n;
+  str[pos] = '\0';
+  header->length = pos;
 }

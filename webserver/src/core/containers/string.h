@@ -80,8 +80,7 @@ bool string_parse_format(string str, const char *format, ...);
 
 // Concatenating
 
-void _string_concatenate_string_size(char *str1, size_t *len1, char *str2,
-                                     size_t len2);
+void _string_concatenate_string_size(char *str1, char *str2, size_t len2);
 
 /**
  * @brief Concatenates str2 onto str1.
@@ -93,5 +92,6 @@ void _string_concatenate_string_size(char *str1, size_t *len1, char *str2,
  */
 bool string_concatenate_string(string str1, string str2);
 #define string_concatenate_string_literal(str1, lit)                           \
-  _string_concatenate_string_size(str1, &(str1 - (sizeof(size_t) * 2)), lit,   \
-                                  STRING_LITERAL_LENGTH(lit))
+  _string_concatenate_string_size(str1, lit, STRING_LITERAL_LENGTH(lit))
+
+void string_concatenate_u64(string str, u64 value);

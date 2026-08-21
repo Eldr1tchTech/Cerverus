@@ -31,51 +31,66 @@ void response_add_header(response *res, header h) {
   darray_add(res->headers, &h);
 }
 
-char *response_serialize(response *res) {
+string response_serialize(response *res) {
   // Pass 1: Calculate size
   size_t size = 0;
 
+  // STATUS LINE
   const char *version = serialize_http_version(res->status_line.version);
   if (!version) {
     LOG_ERROR("response_serialize - No version value.");
     return NULL;
   }
 
-  // STATUS LINE
+  size += STRING_LITERAL_LENGTH(version) + 1 +
+          string_get_u64_length(res->status_line.status_code) + 1 +
+          string_get_length(res->status_line.reason_phrase) + 2;
 
   // HEADERS
   header *headers_darr_data = res->headers->data;
   for (size_t i = 0; i < res->headers->length; i++) {
-    size +=
-        snprintf(NULL, 0, "%s: %s\r\n", headers_darr_data[i].name,
-                 headers_darr_data[i].value); // TODO: Finish replacing snprintf
+    size += string_get_length(headers_darr_data->name) + 2 +
+            string_get_length(headers_darr_data->value) + 2;
   }
+
+  size += 2;
 
   // BODY
 
   // Pass 2: Allocate string and fill it
 
   // Allocate
-  char *raw_res = cmem_alloc((size) * sizeof(char));
-  size_t offset = 0;
+  string raw_res = string_empty();
+  raw_res = string_grow_to(raw_res, size);
 
   // STATUS LINE
-  offset += snprintf(
-      raw_res + offset, size - offset, "%s %i %s\r\n", version,
-      res->status_line.status_code,
-      res->status_line
-          .reason_phrase); // Don't really need the + offset in the first field
-                           // since it's the first thing being added...
+  string_concatenate_string_literal(raw_res, version);
+  string_concatenate_string_literal(raw_res, " ");
+  string_concatenate_u64(raw_res, res->status_line.status_code);
+  string_concatenate_string_literal(raw_res, " ");
+  string_concatenate_string(raw_res, res->status_line.reason_phrase);
+  string_concatenate_string_literal(raw_res, "\r\n");
 
   // HEADERS
   for (size_t i = 0; i < res->headers->length; i++) {
-    offset += snprintf(raw_res + offset, size - offset, "%s: %s\r\n",
-                       headers_darr_data[i].name, headers_darr_data[i].value);
+    string_concatenate_string(raw_res, headers_darr_data[i].name);
+    string_concatenate_string_literal(raw_res, ": ");
+    string_concatenate_string(raw_res, headers_darr_data[i].value);
+    string_concatenate_string_literal(raw_res, "\r\n");
   }
+
+  string_concatenate_string_literal(raw_res, "\r\n");
 
   // BODY
   // TODO: body handling has been removed for now, as there is no need until the
   // server can at least serve static files.
+
+  // Destroy response
+  string_destroy(res->status_line.reason_phrase);
+  for (size_t i = 0; i < res->headers->length; i++) {
+    string_destroy(headers_darr_data[i].name);
+    string_destroy(headers_darr_data[i].value);
+  }
 
   return raw_res;
 }
