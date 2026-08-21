@@ -6,6 +6,9 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#define STRING_MAX_PREALLOC                                                    \
+  (1024 * 1024) // 1MB — matches your doubling/linear growth split
+
 typedef struct string_header {
   size_t length;
   size_t capactiy;
@@ -97,6 +100,39 @@ string string_empty() {
   header->data[8] = '\0';
 
   return header_to_string(header);
+}
+
+string string_grow_to(string str, size_t value) {
+  string_header *header = string_to_header(str);
+
+  if (header->capactiy >= value) {
+    return str; // already big enough, no-op
+  }
+
+  size_t new_capacity = header->capactiy;
+  if (new_capacity == 0) {
+    new_capacity = value;
+  } else {
+    while (new_capacity < value) {
+      if (new_capacity < STRING_MAX_PREALLOC) {
+        new_capacity *= 2;
+      } else {
+        new_capacity += STRING_MAX_PREALLOC;
+      }
+    }
+  }
+
+  string_header *new_header =
+      cmem_alloc(sizeof(string_header) + new_capacity + 1);
+
+  new_header->length = header->length;
+  new_header->capactiy = new_capacity;
+  cmem_mcpy(new_header->data, header->data,
+            header->length + 1); // includes '\0'
+
+  cmem_free(header);
+
+  return header_to_string(new_header);
 }
 
 void string_destroy(string str) { cmem_free(string_to_header(str)); }

@@ -26,6 +26,8 @@ string _string_create_length(char *str, size_t length);
 string string_create(char *str);
 string string_duplicate(string str);
 string string_empty();
+string string_grow_to(string str, size_t value);
+
 void string_destroy(string str);
 
 // Search

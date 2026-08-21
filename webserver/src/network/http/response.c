@@ -46,8 +46,9 @@ char *response_serialize(response *res) {
   // HEADERS
   header *headers_darr_data = res->headers->data;
   for (size_t i = 0; i < res->headers->length; i++) {
-    size += snprintf(NULL, 0, "%s: %s\r\n", res->headers.headers[i].name,
-                     res->headers.headers[i].value);
+    size +=
+        snprintf(NULL, 0, "%s: %s\r\n", headers_darr_data[i].name,
+                 headers_darr_data[i].value); // TODO: Finish replacing snprintf
   }
 
   // BODY
@@ -67,10 +68,9 @@ char *response_serialize(response *res) {
                            // since it's the first thing being added...
 
   // HEADERS
-  for (size_t i = 0; i < res->headers.header_count; i++) {
-    offset +=
-        snprintf(raw_res + offset, size - offset, "%s: %s\r\n",
-                 res->headers.headers[i].name, res->headers.headers[i].value);
+  for (size_t i = 0; i < res->headers->length; i++) {
+    offset += snprintf(raw_res + offset, size - offset, "%s: %s\r\n",
+                       headers_darr_data[i].name, headers_darr_data[i].value);
   }
 
   // BODY
