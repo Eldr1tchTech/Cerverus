@@ -36,7 +36,7 @@ void hashmap_destroy(hashmap *hmap) {
   for (size_t i = 0; i < hmap->size; i++) {
     hashmap_entry *curr_entry = hashmap_get_entry(hmap, i);
     if (curr_entry->exists) {
-      string_destroy(curr_entry->key);
+      str_destroy(curr_entry->key);
     }
   }
   cmem_free(hmap->entries);
@@ -49,11 +49,11 @@ bool hashmap_set(hashmap *hmap, string key, void *element) {
     hashmap_entry *curr_entry =
         hashmap_get_entry(hmap, (start + i) % hmap->size);
     if (curr_entry->exists || curr_entry->is_tombstone) {
-      if (curr_entry->exists && string_equal(curr_entry->key, key)) {
+      if (curr_entry->exists && str_equal(curr_entry->key, key)) {
         cmem_mcpy(curr_entry->data, element, hmap->stride);
         if (curr_entry->key)
-          string_destroy(curr_entry->key);
-        curr_entry->key = string_duplicate(key);
+          str_destroy(curr_entry->key);
+        curr_entry->key = str_dup(key);
         curr_entry->exists = true;
         return true;
       }
@@ -61,8 +61,8 @@ bool hashmap_set(hashmap *hmap, string key, void *element) {
     }
     cmem_mcpy(curr_entry->data, element, hmap->stride);
     if (curr_entry->key)
-      string_destroy(curr_entry->key);
-    curr_entry->key = string_duplicate(key);
+      str_destroy(curr_entry->key);
+    curr_entry->key = str_dup(key);
     curr_entry->exists = true;
     return true;
   }
@@ -75,7 +75,7 @@ void *hashmap_get(hashmap *hmap, string key) {
     hashmap_entry *curr_entry =
         hashmap_get_entry(hmap, (start + i) % hmap->size);
     if (curr_entry->exists || curr_entry->is_tombstone) {
-      if (curr_entry->exists && string_equal(curr_entry->key, key)) {
+      if (curr_entry->exists && str_equal(curr_entry->key, key)) {
         return curr_entry->data;
       }
       continue;
@@ -107,7 +107,7 @@ bool hashmap_delete(hashmap *hmap, const string key) {
     hashmap_entry *curr_entry =
         hashmap_get_entry(hmap, (start + i) % hmap->size);
     if (curr_entry->exists || curr_entry->is_tombstone) {
-      if (curr_entry->exists && string_equal(curr_entry->key, key) == 0) {
+      if (curr_entry->exists && str_equal(curr_entry->key, key) == 0) {
         cmem_zmem(curr_entry, sizeof(hashmap_entry) + hmap->stride);
         curr_entry->is_tombstone = true;
         return true;

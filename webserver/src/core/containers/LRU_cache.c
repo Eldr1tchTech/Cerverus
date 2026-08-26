@@ -47,7 +47,7 @@ void LRU_cache_add(LRU_cache *cache, char *label, void *item) {
   }
 
   dll_entry *new_entry = cmem_alloc(sizeof(dll_entry) + cache->stride);
-  new_entry->hmap_key = string_create(label);
+  new_entry->hmap_key = str_create(label);
   cmem_mcpy(new_entry->data, item, cache->stride);
 
   doubly_linked_list_node *new_node =

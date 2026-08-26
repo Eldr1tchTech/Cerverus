@@ -18,7 +18,7 @@ void router_add_route(router *rtr, route *rt) {
 
 // TODO: Eventually match to check if given file exists
 void router_handle_request(router *rtr, request *request, int client_fd) {
-  if (string_equal_literal(request->request_line.URI, "/")) {
+  if (str_equal_lit(request->request_line.URI, "/")) {
     int file_fd = open("assets/public/index.html", O_RDONLY);
     if (file_fd != -1) {
       send_file_response(client_fd, file_fd, 200, "OK", ".html");
@@ -29,12 +29,12 @@ void router_handle_request(router *rtr, request *request, int client_fd) {
   // 1. Check public directory
   // Implement public directory hashmap here.
   if (request->request_line.method == http_method_get) {
-    string temp_file_name = string_duplicate(request->request_line.URI);
+    string temp_file_name = str_dup(request->request_line.URI);
     string ext = string_split_literal(temp_file_name, ".");
 
     if (ext) {
       char *file_name = "assets/public";
-      string_concatenate_string(file_name, request->request_line.URI);
+      str_cat_str(file_name, request->request_line.URI);
       int file_fd = open(file_name, O_RDONLY);
       if (file_fd != -1) {
         send_file_response(client_fd, file_fd, 200, "OK", ext);

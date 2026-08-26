@@ -42,15 +42,15 @@ string response_serialize(response *res) {
     return nullptr;
   }
 
-  size += STRING_LITERAL_LENGTH(version) + 1 +
-          string_get_u64_length(res->status_line.status_code) + 1 +
-          string_get_length(res->status_line.reason_phrase) + 2;
+  size += STR_LIT_LEN(version) + 1 +
+          str_get_u64_len(res->status_line.status_code) + 1 +
+          str_get_len(res->status_line.reason_phrase) + 2;
 
   // HEADERS
   header *headers_darr_data = res->headers->data;
   for (size_t i = 0; i < res->headers->length; i++) {
-    size += string_get_length(headers_darr_data->name) + 2 +
-            string_get_length(headers_darr_data->value) + 2;
+    size += str_get_len(headers_darr_data->name) + 2 +
+            str_get_len(headers_darr_data->value) + 2;
   }
 
   size += 2;
@@ -60,36 +60,36 @@ string response_serialize(response *res) {
   // Pass 2: Allocate string and fill it
 
   // Allocate
-  string raw_res = string_empty();
-  raw_res = string_grow_to(raw_res, size);
+  string raw_res = str_empty();
+  raw_res = str_grow_to(raw_res, size);
 
   // STATUS LINE
-  string_concatenate_string_literal(raw_res, version);
-  string_concatenate_string_literal(raw_res, " ");
-  string_concatenate_u64(raw_res, res->status_line.status_code);
-  string_concatenate_string_literal(raw_res, " ");
-  string_concatenate_string(raw_res, res->status_line.reason_phrase);
-  string_concatenate_string_literal(raw_res, "\r\n");
+  str_cat_str_lit(raw_res, version);
+  str_cat_str_lit(raw_res, " ");
+  str_cat_u64(raw_res, res->status_line.status_code);
+  str_cat_str_lit(raw_res, " ");
+  str_cat_str(raw_res, res->status_line.reason_phrase);
+  str_cat_str_lit(raw_res, "\r\n");
 
   // HEADERS
   for (size_t i = 0; i < res->headers->length; i++) {
-    string_concatenate_string(raw_res, headers_darr_data[i].name);
-    string_concatenate_string_literal(raw_res, ": ");
-    string_concatenate_string(raw_res, headers_darr_data[i].value);
-    string_concatenate_string_literal(raw_res, "\r\n");
+    str_cat_str(raw_res, headers_darr_data[i].name);
+    str_cat_str_lit(raw_res, ": ");
+    str_cat_str(raw_res, headers_darr_data[i].value);
+    str_cat_str_lit(raw_res, "\r\n");
   }
 
-  string_concatenate_string_literal(raw_res, "\r\n");
+  str_cat_str_lit(raw_res, "\r\n");
 
   // BODY
   // TODO: body handling has been removed for now, as there is no need until the
   // server can at least serve static files.
 
   // Destroy response
-  string_destroy(res->status_line.reason_phrase);
+  str_destroy(res->status_line.reason_phrase);
   for (size_t i = 0; i < res->headers->length; i++) {
-    string_destroy(headers_darr_data[i].name);
-    string_destroy(headers_darr_data[i].value);
+    str_destroy(headers_darr_data[i].name);
+    str_destroy(headers_darr_data[i].value);
   }
 
   return raw_res;

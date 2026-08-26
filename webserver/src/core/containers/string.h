@@ -10,8 +10,6 @@
 // NOTE: This library is being built as need for certain functions arises. So
 // not all classic utilities may be 'public'
 
-// TODO: update function naming to reflect dictionary
-
 /*
 Dictionary:
 string - str
@@ -19,46 +17,48 @@ string (without header) - cstr
 length - len
 concatenate - cat
 format - fmt
+duplicate - dup
 */
 
-#define STRING_LITERAL_LENGTH(lit) (sizeof(lit) - 1)
+#define STR_LIT_LEN(lit) (sizeof(lit) - 1)
 
+typedef const char *str_lit;
+typedef char *cstr;
 typedef char *string;
 
-typedef string literal;
-
 // Utility
-size_t raw_string_length(const char *str);
-size_t string_get_length(string str);
-size_t string_get_capacity(string str);
+size_t raw_str_len(const cstr str);
 
-size_t string_get_u64_length(u64 n);
+// Getters
+size_t str_get_len(string str);
+size_t str_get_capacity(string str);
 
-// Creating
-string _string_create_length(char *str, size_t length);
-string string_create(char *str);
-string string_create_literal(char *lit);
-string string_duplicate(string str);
-string string_empty();
-string string_grow_to(string str, size_t value);
+// TODO: This naming is misleading
+size_t str_get_u64_len(u64 n);
 
-void string_destroy(string str);
+// Creating/Allocating?
+string _str_create_len(const cstr str, size_t len);
+string str_create(const cstr str);
+string str_create_lit(str_lit lit);
+string str_dup(string str);
+string str_empty();
+string str_grow_to(string str, size_t val);
+
+void str_destroy(string str);
 
 // Search
-int _string_find(string str, const char *delim, size_t delim_len);
-#define _string_find_literal(str, lit)                                         \
-  _string_find(str, lit, STRING_LITERAL_LENGTH(lit))
+int _str_find(string str, str_lit delim, size_t delim_len);
+#define _str_find_lit(str, lit) _str_find(str, lit, STR_LIT_LEN(lit))
 
 // Comparisons
-bool _raw_string_equal_length(const char *str1, size_t len1, const char *str2,
-                              size_t len2);
-bool string_equal(const string str1, const string str2);
-#define string_equal_literal(s, lit)                                           \
-  _raw_string_equal_length((s), string_get_length(s), (lit),                   \
-                           STRING_LITERAL_LENGTH(lit))
+bool _raw_str_equal_len(const cstr str1, size_t len1, const cstr str2,
+                        size_t len2);
+bool str_equal(const string str1, const string str2);
+#define str_equal_lit(s, lit)                                                  \
+  _raw_str_equal_len((s), str_get_len(s), (lit), STR_LIT_LEN(lit))
 
 // Parsing
-bool string_parse_u64(string str, u64 *out);
+bool str_parse_u64(string str, u64 *out);
 
 /**
  * @brief Splits str at the first occurence of delim. str contains the contents
@@ -70,9 +70,9 @@ bool string_parse_u64(string str, u64 *out);
  * @param delim_len
  * @return string The contents before the delim
  */
-string _string_split_size(string str, const char *delim, size_t delim_len);
+string _str_split_size(string str, const cstr delim, size_t delim_len);
 #define string_split_literal(str, delim)                                       \
-  _string_split_size(str, delim, STRING_LITERAL_LENGTH(delim))
+  _str_split_size(str, delim, STR_LIT_LEN(delim))
 
 /**
  * @brief Splits str at all occurences of delim. str is considered consumed upon
@@ -84,17 +84,16 @@ string _string_split_size(string str, const char *delim, size_t delim_len);
  * @param delim_len
  * @return darray*
  */
-darray *_string_split_at_size(string str, const char *delim, size_t delim_len);
+darray *_str_split_at_size(string str, const cstr delim, size_t delim_len);
 
-#define string_split_at_literal(str, delim)                                    \
-  _string_split_at_size(str, delim, STRING_LITERAL_LENGTH(delim))
+#define str_split_at_lit(str, delim)                                           \
+  _str_split_at_size(str, delim, STR_LIT_LEN(delim))
 
 // TODO: add strict parsing at one point or another.
-bool string_parse_format(string str, const char *format, ...);
+bool str_parse_fmt(string str, const cstr format, ...);
 
 // Concatenating
-
-void _string_concatenate_string_size(char *str1, char *str2, size_t len2);
+void _str_cat_str_size(string str1, const cstr str2, size_t len2);
 
 /**
  * @brief Concatenates str2 onto str1.
@@ -104,8 +103,8 @@ void _string_concatenate_string_size(char *str1, char *str2, size_t len2);
  * @return bool If str1 capacity is overflowed, false is returned with no
  * changes made, otherwise true is returned.
  */
-bool string_concatenate_string(string str1, string str2);
-#define string_concatenate_string_literal(str1, lit)                           \
-  _string_concatenate_string_size(str1, lit, STRING_LITERAL_LENGTH(lit))
+bool str_cat_str(string str1, string str2);
+#define str_cat_str_lit(str1, lit)                                             \
+  _str_cat_str_size(str1, lit, STR_LIT_LEN(lit))
 
-void string_concatenate_u64(string str, u64 value);
+void str_cat_u64(string str, u64 value);
