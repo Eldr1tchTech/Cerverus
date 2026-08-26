@@ -5,9 +5,9 @@
 trie_node *trie_node_create() {
   trie_node *new_node = cmem_alloc(sizeof(trie_node));
   new_node->children = darray_create(2, sizeof(trie_node));
-  new_node->segment.path_segment = NULL;
+  new_node->segment.path_segment = nullptr;
   new_node->segment.is_dynamic = false;
-  new_node->callback = NULL;
+  new_node->callback = nullptr;
 
   return new_node;
 }
@@ -50,7 +50,7 @@ void trie_add_route(trie *t, route *rt) {
   route_segment *segments = rt->segments->data;
   for (int i = 0; i < rt->segments->length; i++) {
     trie_node *children = current->children->data;
-    trie_node *next = NULL;
+    trie_node *next = nullptr;
 
     // Search existing children for a matching segment
     for (int j = 0; j < current->children->length; j++) {
@@ -68,7 +68,7 @@ void trie_add_route(trie *t, route *rt) {
           string_duplicate(segments[i].path_segment);
       new_node.segment.is_dynamic = segments[i].is_dynamic;
       new_node.children = darray_create(2, sizeof(trie_node));
-      new_node.callback = NULL;
+      new_node.callback = nullptr;
       darray_add(current->children, &new_node);
       // Re-fetch: darray_add may have resized, invalidating old pointer
       children = current->children->data;
@@ -110,7 +110,7 @@ route_callback trie_find_handler(trie *t, http_method method, string URI) {
           cmem_free(segment_darr_data[k].path_segment);
         }
         darray_destroy(segment_darr);
-        return NULL;
+        return nullptr;
       }
     }
   }

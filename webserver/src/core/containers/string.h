@@ -65,7 +65,7 @@ bool string_parse_u64(string str, u64 *out);
  * after the delim upon completion.
  *
  * @param str
- * @param delim If delim doesn't occur in str, NULL is returned, str is not
+ * @param delim If delim doesn't occur in str, nullptr is returned, str is not
  * considered consumed.
  * @param delim_len
  * @return string The contents before the delim
@@ -79,7 +79,7 @@ string _string_split_size(string str, const char *delim, size_t delim_len);
  * completion.
  *
  * @param str
- * @param delim If delim doesn't occur in str, NULL is returned, str is not
+ * @param delim If delim doesn't occur in str, nullptr is returned, str is not
  * considered consumed.
  * @param delim_len
  * @return darray*

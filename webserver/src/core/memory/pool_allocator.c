@@ -26,7 +26,7 @@ void *pool_allocator_alloc(pool_allocator *pool_alloc) {
     bitwise_set(pool_alloc->availability, i);
     return pool_alloc->data + pool_alloc->stride * i;
   }
-  return NULL;
+  return nullptr;
 }
 
 void pool_allocator_free(pool_allocator *pool_alloc, void *block) {

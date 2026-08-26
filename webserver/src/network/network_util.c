@@ -29,11 +29,11 @@ string content_type_val_helper(string ext) {
       LOG_ERROR("content_type_val_helper - Currently unsuported file "
                 "extension: %s. Returning null.",
                 ext);
-      return NULL;
+      return nullptr;
     }
   }
   LOG_ERROR("content_type_val_helper - Please provide a valid char* for ext.");
-  return NULL;
+  return nullptr;
 }
 
 void darray_destroy_string_helper(darray *darr) {

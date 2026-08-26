@@ -18,7 +18,7 @@ LRU_cache *LRU_cache_create(size_t size, size_t stride,
   cache->size = size;
   cache->stride = stride;
   cache->hmap =
-      hashmap_create(size, .67, sizeof(doubly_linked_list_node *), NULL);
+      hashmap_create(size, .67, sizeof(doubly_linked_list_node *), nullptr);
   cache->dll = doubly_linked_list_create(sizeof(dll_entry) + stride);
 
   return cache;
@@ -33,8 +33,8 @@ void *LRU_cache_get(LRU_cache *cache, char *label) {
   // Check hashmap, hashmap stores pointer to dll, dll cotnains data, move entry
   // to front
   doubly_linked_list_node *item = hashmap_get(cache->hmap, label);
-  if (item == NULL) {
-    return NULL;
+  if (item == nullptr) {
+    return nullptr;
   }
   doubly_linked_list_move_to_front(cache->dll, item);
 
@@ -42,7 +42,7 @@ void *LRU_cache_get(LRU_cache *cache, char *label) {
 }
 
 void LRU_cache_add(LRU_cache *cache, char *label, void *item) {
-  if (hashmap_get(cache->hmap, label) != NULL) {
+  if (hashmap_get(cache->hmap, label) != nullptr) {
     LOG_DEBUG("LRU_cache_add - label is already in use.");
   }
 

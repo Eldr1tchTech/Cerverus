@@ -15,7 +15,7 @@ char *serialize_http_version(http_version version) {
 
   default:
     LOG_ERROR("Unable to serialize unknown http_version.");
-    return NULL;
+    return nullptr;
   }
 }
 
@@ -39,7 +39,7 @@ string response_serialize(response *res) {
   const char *version = serialize_http_version(res->status_line.version);
   if (!version) {
     LOG_ERROR("response_serialize - No version value.");
-    return NULL;
+    return nullptr;
   }
 
   size += STRING_LITERAL_LENGTH(version) + 1 +

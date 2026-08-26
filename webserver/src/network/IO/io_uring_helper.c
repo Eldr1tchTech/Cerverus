@@ -67,7 +67,7 @@ void handle_accept_submission(server *srv) {
   ctx->srv = srv;
   ctx->op_type = uring_op_type_accept;
 
-  io_uring_prep_multishot_accept(sqe, srv->socket_fd, NULL, NULL, 0);
+  io_uring_prep_multishot_accept(sqe, srv->socket_fd, nullptr, nullptr, 0);
   io_uring_sqe_set_data(sqe, ctx);
 
   io_uring_submit(&srv->uring.ring);
@@ -151,15 +151,15 @@ void handle_recv_completion(struct io_uring_cqe *cqe, uring_context *ctx) {
 void handle_openat_submission(uring_context *ctx, char *path) {
   // Check to see if state is setup, eventually move this somewhere so it isn't
   // checked every single time
-  if (state.file_cache == NULL) {
+  if (state.file_cache == nullptr) {
     state.file_cache = LRU_cache_create(16, sizeof(int), file_eviction_handler);
   }
-  if (state.ring == NULL) {
+  if (state.ring == nullptr) {
     state.ring = &ctx->srv->uring.ring;
   }
 
   int *fd = LRU_cache_get(state.file_cache, path);
-  if (fd != NULL) {
+  if (fd != nullptr) {
   }
 
   struct io_uring_sqe *sqe = io_uring_get_sqe(&ctx->srv->uring.ring);

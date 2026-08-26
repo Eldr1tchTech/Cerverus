@@ -14,7 +14,7 @@ typedef struct string_header {
 
 // Utility
 size_t raw_string_length(const char *str) {
-  if (str == NULL)
+  if (str == nullptr)
     return 0;
 
   size_t len = 0;
@@ -201,7 +201,7 @@ void string_remove_head(string str, size_t size) {
 string _string_split_size(string str, const char *delim, size_t delim_len) {
   int location = _string_find(str, delim, delim_len);
   if (location == -1) {
-    return NULL;
+    return nullptr;
   }
 
   location += delim_len;
@@ -215,7 +215,7 @@ string _string_split_size(string str, const char *delim, size_t delim_len) {
 darray *_string_split_at_size(string str, const char *delim, size_t delim_len) {
   darray *string_darr = darray_create(8, sizeof(string *));
   string new_string;
-  while ((new_string = _string_split_size(str, delim, delim_len)) != NULL) {
+  while ((new_string = _string_split_size(str, delim, delim_len)) != nullptr) {
     darray_add(string_darr, &new_string);
   }
 
@@ -224,7 +224,7 @@ darray *_string_split_at_size(string str, const char *delim, size_t delim_len) {
     return string_darr;
   } else {
     darray_destroy(string_darr);
-    return NULL;
+    return nullptr;
   }
 }
 
@@ -256,7 +256,7 @@ bool string_parse_format(string str, const char *fmt, ...) {
         // %s is followed by a literal delimiter.
         *out = _string_split_size(str, delim_start, delim_len);
 
-        if (*out == NULL) {
+        if (*out == nullptr) {
           LOG_DEBUG("string_parse_format - delimiter not found.");
           va_end(args);
           return false;

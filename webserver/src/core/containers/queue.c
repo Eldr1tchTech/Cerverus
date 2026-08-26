@@ -6,8 +6,8 @@
 queue *queue_create(int stride) {
   queue *q = cmem_alloc(sizeof(queue));
   q->stride = stride;
-  q->root = NULL;
-  q->head = NULL;
+  q->root = nullptr;
+  q->head = nullptr;
 }
 
 void queue_destroy(queue *q) {
@@ -28,21 +28,22 @@ void enqueue(queue *q, void *item) {
     q->head->next = new_node;
     q->head = new_node;
   }
-  new_node->next = NULL;
+  new_node->next = nullptr;
   cmem_mcpy(q->head->data, item, q->stride);
 }
 
 // NOTE: This transfers ownership of the memory to the caller.
 void *dequeue(queue *q) {
   if (!q->head) {
-    LOG_DEBUG("dequeue - Attempted to dequeue an empty queue. Returning NULL.");
-    return NULL;
+    LOG_DEBUG(
+        "dequeue - Attempted to dequeue an empty queue. Returning nullptr.");
+    return nullptr;
   }
 
   node *node = q->root;
   q->root = q->root->next;
   if (!q->root) {
-    q->head = NULL;
+    q->head = nullptr;
   }
   void *return_dat = node->data;
   cmem_free(node);

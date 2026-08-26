@@ -28,7 +28,7 @@ void *GPA_alloc(GPA *gpa, size_t size) {
   size_t adjusted_size = size + sizeof(GPA_allocation_header);
 
   doubly_linked_list_node *curr_dll_node = gpa->free_list->head;
-  while (curr_dll_node != NULL) {
+  while (curr_dll_node != nullptr) {
     curr_fl_node = (free_list_node *)curr_dll_node->data;
     if (curr_fl_node->size >= adjusted_size) {
       if (curr_fl_node->size > adjusted_size) {
@@ -45,7 +45,7 @@ void *GPA_alloc(GPA *gpa, size_t size) {
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 bool GPA_free(GPA *gpa, void *ptr) {

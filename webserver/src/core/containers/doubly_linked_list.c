@@ -10,8 +10,8 @@ doubly_linked_list_node *doubly_linked_list_node_create(size_t stride) {
   doubly_linked_list_node *new_node =
       cmem_alloc(sizeof(doubly_linked_list_node) + stride);
 
-  new_node->prev = NULL;
-  new_node->next = NULL;
+  new_node->prev = nullptr;
+  new_node->next = nullptr;
 
   return new_node;
 }
@@ -26,8 +26,8 @@ doubly_linked_list *doubly_linked_list_create(size_t stride) {
 
   new_dll->stride = stride;
   new_dll->length = 0;
-  new_dll->head = NULL;
-  new_dll->tail = NULL;
+  new_dll->head = nullptr;
+  new_dll->tail = nullptr;
 
   return new_dll;
 }
@@ -35,7 +35,7 @@ doubly_linked_list *doubly_linked_list_create(size_t stride) {
 void doubly_linked_list_destroy(doubly_linked_list *dll) {
   doubly_linked_list_node *curr_node = dll->head;
   doubly_linked_list_node *temp;
-  while (curr_node != NULL) {
+  while (curr_node != nullptr) {
     temp = curr_node->next;
     doubly_linked_list_node_destroy(curr_node);
     curr_node = temp;
@@ -48,7 +48,7 @@ doubly_linked_list_node *doubly_linked_list_get(doubly_linked_list *dll,
                                                 int index) {
   if (index >= dll->length || index <= -dll->length - 1) {
     LOG_ERROR("doubly_linked_list_get - index out of bounds.");
-    return NULL;
+    return nullptr;
   }
 
   if (index == 0) {
@@ -82,7 +82,7 @@ doubly_linked_list_node *doubly_linked_list_push_front(doubly_linked_list *dll,
   dll->head->prev = new_node;
   new_node->next = dll->head;
   dll->head = new_node;
-  new_node->prev = NULL;
+  new_node->prev = nullptr;
 
   dll->length++;
 
@@ -99,7 +99,7 @@ doubly_linked_list_node *doubly_linked_list_push_back(doubly_linked_list *dll,
   dll->tail->next = new_node;
   new_node->prev = dll->tail;
   dll->tail = new_node;
-  new_node->next = NULL;
+  new_node->next = nullptr;
 
   dll->length++;
 
@@ -113,17 +113,17 @@ void doubly_linked_list_pop_head(doubly_linked_list *dll, void *data) {
     return;
   }
 
-  if (data != NULL)
+  if (data != nullptr)
     cmem_mcpy(data, dll->head->data, dll->stride);
 
   if (dll->length > 1) {
     dll->head = dll->head->next;
     doubly_linked_list_node_destroy(dll->head->prev);
-    dll->head->prev = NULL;
+    dll->head->prev = nullptr;
   } else {
     doubly_linked_list_node_destroy(dll->head);
-    dll->head = NULL;
-    dll->tail = NULL;
+    dll->head = nullptr;
+    dll->tail = nullptr;
   }
 
   dll->length--;
@@ -135,17 +135,17 @@ void doubly_linked_list_pop_tail(doubly_linked_list *dll, void *data) {
     return;
   }
 
-  if (data != NULL)
+  if (data != nullptr)
     cmem_mcpy(data, dll->tail->data, dll->stride);
 
   if (dll->length > 1) {
     dll->tail = dll->tail->prev;
     doubly_linked_list_node_destroy(dll->tail->next);
-    dll->tail->next = NULL;
+    dll->tail->next = nullptr;
   } else {
     doubly_linked_list_node_destroy(dll->tail);
-    dll->head = NULL;
-    dll->tail = NULL;
+    dll->head = nullptr;
+    dll->tail = nullptr;
   }
 
   dll->length--;
@@ -163,5 +163,5 @@ void doubly_linked_list_move_to_front(doubly_linked_list *dll,
   node->next = dll->head;
   dll->head->prev = node;
   dll->head = node;
-  node->prev = NULL;
+  node->prev = nullptr;
 }

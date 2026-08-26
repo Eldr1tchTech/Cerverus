@@ -81,7 +81,7 @@ bool server_setup(server *srv) {
   sa.sa_handler = SIG_IGN;
   sigemptyset(&sa.sa_mask);
   sa.sa_flags = 0; // No SA_RESETHAND — disposition stays ignored permanently
-  sigaction(SIGPIPE, &sa, NULL);
+  sigaction(SIGPIPE, &sa, nullptr);
 
   LOG_INFO("Starting server...");
   LOG_INFO("Setting up socket...");
@@ -148,7 +148,7 @@ void server_run(server *srv) {
 
   LOG_INFO(
       "Server listening on port %i.\n\tVisit: http://localhost:%i/index.html",
-      ntohs(addr.sin_port), ntohs(addr.sin_port));
+      srv->conf->port, srv->conf->port);
 
   while (true) {
     uring_process_completions(srv);

@@ -175,5 +175,5 @@ string request_get_header_value(request *req, char *header_name) {
       return headers_darr_data[i].value;
     }
   }
-  return NULL;
+  return nullptr;
 }

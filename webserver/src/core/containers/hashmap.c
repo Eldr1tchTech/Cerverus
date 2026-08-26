@@ -80,9 +80,9 @@ void *hashmap_get(hashmap *hmap, string key) {
       }
       continue;
     }
-    return NULL;
+    return nullptr;
   }
-  return NULL;
+  return nullptr;
 }
 
 hashmap *hashmap_rehash(hashmap *hmap) {

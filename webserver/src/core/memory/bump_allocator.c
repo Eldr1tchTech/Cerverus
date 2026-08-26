@@ -22,7 +22,7 @@ void bump_allocator_destroy(bump_allocator *bump_alloc) {
 void *bump_allocator_alloc(bump_allocator *bump_alloc, size_t size) {
   if (bump_alloc->cursor + size > bump_alloc->data + bump_alloc->size) {
     LOG_ERROR("bump_allocator_alloc - Not enough memory available.");
-    return NULL;
+    return nullptr;
   }
   void *r = bump_alloc->cursor;
   bump_alloc->cursor += size;

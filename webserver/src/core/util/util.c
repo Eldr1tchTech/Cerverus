@@ -12,7 +12,7 @@ char *asprintf_cerv(char *fmt, ...) {
 
   va_list args_copy;
   va_copy(args_copy, args);
-  int needed = vsnprintf(NULL, 0, fmt, args_copy);
+  int needed = vsnprintf(nullptr, 0, fmt, args_copy);
   va_end(args_copy);
 
   if (needed < 0) {
