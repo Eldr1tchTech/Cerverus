@@ -1,9 +1,6 @@
 #include "route_trie.h"
 
 #include "core/memory/cmem.h"
-#include "core/util/util.h"
-#include "network/network_util.h"
-
 
 trie_node *trie_node_create() {
   trie_node *new_node = cmem_alloc(sizeof(trie_node));
@@ -23,7 +20,7 @@ void trie_node_destroy(trie_node *t_node) {
 
   darray_destroy(t_node->children);
   if (t_node->segment.path_segment) {
-    cmem_free(t_node->segment.path_segment);
+    string_destroy(t_node->segment.path_segment);
   }
   cmem_free(t_node);
 }
@@ -57,8 +54,8 @@ void trie_add_route(trie *t, route *rt) {
 
     // Search existing children for a matching segment
     for (int j = 0; j < current->children->length; j++) {
-      if (strcmp(segments[i].path_segment, children[j].segment.path_segment) ==
-          0) {
+      if (string_equal(segments[i].path_segment,
+                       children[j].segment.path_segment)) {
         next = &children[j];
         break;
       }
@@ -68,8 +65,7 @@ void trie_add_route(trie *t, route *rt) {
     if (!next) {
       trie_node new_node = {0};
       new_node.segment.path_segment =
-          cmem_alloc(strlen(segments[i].path_segment) + 1);
-      strcpy(new_node.segment.path_segment, segments[i].path_segment);
+          string_duplicate(segments[i].path_segment);
       new_node.segment.is_dynamic = segments[i].is_dynamic;
       new_node.children = darray_create(2, sizeof(trie_node));
       new_node.callback = NULL;
@@ -85,8 +81,8 @@ void trie_add_route(trie *t, route *rt) {
   current->callback = rt->callback;
 }
 
-route_callback trie_find_handler(trie *t, http_method method, char *URI) {
-  darray *segment_darr = parse_URI(URI);
+route_callback trie_find_handler(trie *t, http_method method, string URI) {
+  darray *segment_darr = string_split_at_literal(URI, "/");
 
   trie_node *root = t->roots[method];
 
@@ -96,8 +92,8 @@ route_callback trie_find_handler(trie *t, http_method method, char *URI) {
     trie_node *children_darr_data = root->children->data;
     for (int j = 0; j < root->children->length; j++) {
       // Check for static match
-      if (strcmp(segment_darr_data[i].path_segment,
-                 children_darr_data[j].segment.path_segment) == 0) {
+      if (string_equal(segment_darr_data[i].path_segment,
+                       children_darr_data[j].segment.path_segment)) {
         root = &children_darr_data[j];
         break;
       }

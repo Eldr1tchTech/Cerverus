@@ -30,33 +30,40 @@ server *server_create(server_config *s_conf) {
   return s;
 }
 
+// TODO: refactor this and the io_uring to use the async definitions/format
+// created
 void send_file_response(int client_fd, int file_fd, int status_code,
-                        const char *reason_phrase, char *ext) {
+                        string reason_phrase, string ext) {
   // 1. Assemble response
   // TODO: Eventually use a pool for this
-  response *res = response_create(0);
+  response *res = response_create();
 
   res->status_line.version = http_version_1p1;
   res->status_line.status_code = status_code;
   res->status_line.reason_phrase = reason_phrase;
 
+  // TODO: refactor this to use the file hashmap
   struct stat file_stat;
   fstat(file_fd, &file_stat);
 
   // Headers
+  // Content-Type
+  header h = {.name = string_create_literal("Content-Type")};
   response_add_header(res, (header){.name = "Content-Type",
                                     .value = content_type_val_helper(ext)});
   char *content_length_str = asprintf_cerv("%i", file_stat.st_size);
+  // Content-Length
   response_add_header(
       res, (header){.name = "Content-Length", .value = content_length_str});
   response_add_header(res, (header){.name = "Connection", .value = "close"});
+  // TODO: Date
 
   // 2. Send response and file
-  char *raw = response_serialize(res);
-  send(client_fd, raw, strlen(raw), MSG_NOSIGNAL);
+  string raw = response_serialize(res);
+  send(client_fd, raw, string_get_length(raw), MSG_NOSIGNAL);
   sendfile(client_fd, file_fd, 0, file_stat.st_size);
-  cmem_free(raw);
-  cmem_free(content_length_str); // Find some way to get rid of this...
+  string_destroy(raw);
+  string_destroy(content_length_str); // Find some way to get rid of this...
   /* IDEA:
   Allocate a buffer that should be big enough, use snprintf, if it fails,
   allocate enough
@@ -124,15 +131,13 @@ void server_run(server *srv) {
 
   LOG_INFO("Setting up io_uring...");
 
-  s->uring.pool_alloc_ctx = pool_allocator_create(sizeof(uring_context), 64);
-
   struct io_uring_params params;
   cmem_zmem(&params, sizeof(params));
   params.flags |= IORING_SETUP_SQPOLL | IORING_SETUP_SQ_AFF;
   params.sq_thread_cpu = 3;
   params.sq_thread_idle = 2000; // 2s timeout
 
-  int ret = io_uring_queue_init_params(QUEUE_DEPTH, &s->uring.ring, &params);
+  int ret = io_uring_queue_init_params(QUEUE_DEPTH, &srv->uring.ring, &params);
   if (ret < 0) {
     LOG_FATAL("server_run - io_uring init failed.");
     close(srv->socket_fd);

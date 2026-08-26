@@ -29,10 +29,12 @@ void router_handle_request(router *rtr, request *request, int client_fd) {
   // 1. Check public directory
   // Implement public directory hashmap here.
   if (request->request_line.method == http_method_get) {
-    const char *ext = strrchr(request->request_line.URI, '.');
+    string temp_file_name = string_duplicate(request->request_line.URI);
+    string ext = string_split_literal(temp_file_name, ".");
+
     if (ext) {
-      char *file_name =
-          asprintf_cerv("assets/public%s", request->request_line.URI);
+      char *file_name = "assets/public";
+      string_concatenate_string(file_name, request->request_line.URI);
       int file_fd = open(file_name, O_RDONLY);
       if (file_fd != -1) {
         send_file_response(client_fd, file_fd, 200, "OK", ext);

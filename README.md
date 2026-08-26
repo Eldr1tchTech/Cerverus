@@ -14,6 +14,12 @@ A high performance webserver made for linux first, should eventually also be abl
 - use GnuTLS for the SSL handshake
 - Uploading/Downloading Files
 
+## NOTE
+
+- Protocol / Server Metadata: Date, Server, Connection
+- Security / Controls: Cache-Control, X-Content-Type-Options
+- Entity / Content Details: Content-Type, Content-Length, Content-Encoding
+
 ## Prerequisites
 
 - make

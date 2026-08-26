@@ -84,6 +84,10 @@ string string_create(char *str) {
   return _string_create_length(str, raw_string_length(str));
 }
 
+string string_create_literal(char *lit) {
+  return _string_create_length(lit, STRING_LITERAL_LENGTH(lit));
+}
+
 string string_duplicate(string str) {
   return _string_create_length(str, string_get_length(str));
 }

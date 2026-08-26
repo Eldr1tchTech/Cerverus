@@ -10,9 +10,22 @@
 // NOTE: This library is being built as need for certain functions arises. So
 // not all classic utilities may be 'public'
 
+// TODO: update function naming to reflect dictionary
+
+/*
+Dictionary:
+string - str
+string (without header) - cstr
+length - len
+concatenate - cat
+format - fmt
+*/
+
 #define STRING_LITERAL_LENGTH(lit) (sizeof(lit) - 1)
 
 typedef char *string;
+
+typedef string literal;
 
 // Utility
 size_t raw_string_length(const char *str);
@@ -24,6 +37,7 @@ size_t string_get_u64_length(u64 n);
 // Creating
 string _string_create_length(char *str, size_t length);
 string string_create(char *str);
+string string_create_literal(char *lit);
 string string_duplicate(string str);
 string string_empty();
 string string_grow_to(string str, size_t value);

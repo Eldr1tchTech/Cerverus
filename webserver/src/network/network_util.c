@@ -2,54 +2,28 @@
 
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
-#include "core/util/util.h"
 
-darray *parse_URI(char *URI) {
-  darray *new_darr = darray_create(strchrc(URI, '/'), sizeof(route_segment));
+darray *parse_URI(string URI) { return string_split_at_literal(URI, "/"); }
 
-  URI++; // Skip the initial /
-
-  int count = new_darr->size;
-  for (int i = 0; i < count; i++) {
-    route_segment segment = {0};
-
-    if (URI[0] == ':') {
-      segment.is_dynamic = true;
-      URI++;
-    }
-
-    int char_index = strchri(URI, '/');
-    int seg_len = (char_index == -1) ? (int)strlen(URI) : char_index;
-
-    segment.path_segment = cmem_alloc((seg_len + 1) * sizeof(char));
-    cmem_mcpy(segment.path_segment, URI, seg_len);
-    // +1 byte is already zeroed by cmem_alloc, so null terminator is handled
-
-    URI += seg_len + (char_index == -1 ? 0 : 1);
-
-    darray_add(new_darr, &segment);
-  }
-
-  return new_darr;
-}
-
-char *content_type_val_helper(const char *ext) {
+string content_type_val_helper(string ext) {
   if (ext) {
-    if (strcmp(ext + 1, "html") == 0) {
+
+    if (string_equal_literal(ext, "html")) {
       return "text/html";
-    } else if (strcmp(ext + 1, "css") == 0) {
+    } else if (string_equal_literal(ext, "css")) {
       return "text/css";
-    } else if (strcmp(ext + 1, "jpg") == 0 || strcmp(ext + 1, "jpeg") == 0) {
+    } else if (string_equal_literal(ext, "jpg") ||
+               string_equal_literal(ext, "jpeg")) {
       return "image/jpeg";
-    } else if (strcmp(ext + 1, "png") == 0) {
+    } else if (string_equal_literal(ext, "png")) {
       return "image/png";
-    } else if (strcmp(ext + 1, "gif") == 0) {
+    } else if (string_equal_literal(ext, "gif")) {
       return "image/gif";
-    } else if (strcmp(ext + 1, "webp") == 0) {
+    } else if (string_equal_literal(ext, "webp")) {
       return "image/webp";
-    } else if (strcmp(ext + 1, "svg") == 0) {
+    } else if (string_equal_literal(ext, "svg")) {
       return "image/svg+xml";
-    } else if (strcmp(ext + 1, "ico") == 0) {
+    } else if (string_equal_literal(ext, "ico")) {
       return "image/x-icon";
     } else {
       LOG_ERROR("content_type_val_helper - Currently unsuported file "

@@ -17,7 +17,7 @@ typedef enum http_method {
   http_method_post,
   http_method_patch,
   http_method_connect,
-  http_method_unknown,
+  http_method_unknown, // NOTE: doubles as number of root trie_node's
 } http_method;
 
 typedef enum http_version {
