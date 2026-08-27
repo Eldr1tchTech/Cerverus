@@ -63,7 +63,7 @@ typedef struct route {
 } route;
 
 typedef struct trie_node {
-  struct trie_node *children; // NOTE: may be double pointer
+  struct trie_node *children;
   route_segment segment;
   route_callback callback;
 } trie_node;

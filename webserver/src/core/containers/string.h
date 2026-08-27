@@ -7,9 +7,6 @@
 // NOTE: Internals functions are marked by beginning with an underscore (ex.
 // _raw_string_equal_length)
 
-// NOTE: This library is being built as need for certain functions arises. So
-// not all classic utilities may be 'public'
-
 /*
 Dictionary:
 string - str

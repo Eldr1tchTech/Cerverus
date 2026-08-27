@@ -66,8 +66,6 @@ size_t string_get_i32_length(i32 n) {
   return length;
 }
 
-// NOTE: When allocating do you want to alignof or pad the allocation/capacity
-// so that its a multiple of 8 or so?
 string _str_create_len(char *str, size_t length) {
   string_header *header = cmem_alloc(sizeof(string_header) + length + 1);
 

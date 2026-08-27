@@ -122,7 +122,7 @@ int request_parse(request *req, char *raw_req, size_t req_len) {
         return -1; // Malformed.
       }
 
-      return header_terminator + 4; // NOTE: is this really correct?
+      return header_terminator + 4;
     } else {
       char *content_length_header_value =
           request_get_header_value(req, "Content-Length");

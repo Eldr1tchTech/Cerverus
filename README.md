@@ -4,10 +4,8 @@ A high performance webserver made for linux first, should eventually also be abl
 
 ## TODO
 
-- refactor darray to be header based
 - finish io_uring state machine
 - create the filemap hashmap
-- Bring back server config
 - use GnuTLS for the SSL handshake
 - Uploading/Downloading Files
 
@@ -21,7 +19,7 @@ A high performance webserver made for linux first, should eventually also be abl
 
 - make
 - clang
-- Platform (Linux only, so far)
+- Platform (Linux only)
 
 ## Features
 
@@ -32,9 +30,8 @@ A prerelease version is(was) working!
 
 ### Upcoming
 
-- platform wrapper
 - filesystem
-- updated filesystem and request handling with io_uring on linux to up performance
+- updated filesystem and request handling with io_uring
 
 ## Benchmark (currently removed)
 
