@@ -1,7 +1,5 @@
 #pragma once
 
-#include "defines.h"
-
 #include "core/containers/string.h"
 
 #define MAX_HEADER_COUNT 32

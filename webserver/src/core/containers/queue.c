@@ -5,9 +5,12 @@
 
 queue *queue_create(int stride) {
   queue *q = cmem_alloc(sizeof(queue));
+
   q->stride = stride;
   q->root = nullptr;
   q->head = nullptr;
+
+  return q;
 }
 
 void queue_destroy(queue *q) {

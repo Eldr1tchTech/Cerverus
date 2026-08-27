@@ -1,7 +1,6 @@
 #include "network_util.h"
 
 #include "core/containers/string.h"
-#include "core/memory/cmem.h"
 #include "core/util/logger.h"
 
 string *parse_URI(string URI) { return str_split_at_lit(URI, "/"); }

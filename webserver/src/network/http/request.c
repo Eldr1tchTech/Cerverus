@@ -140,6 +140,7 @@ int request_parse(request *req, char *raw_req, size_t req_len) {
 
         return header_terminator + 4 + content_length;
       }
+      return -1; // TODO: WARN: This is currently just a placeholder.
     }
   }
 }

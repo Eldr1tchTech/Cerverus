@@ -4,7 +4,7 @@
 #include "core/util/logger.h"
 
 bump_allocator *bump_allocator_create(size_t size) {
-  bump_allocator *bump_alloc = cmem_alloc(sizeof(bump_alloc));
+  bump_allocator *bump_alloc = cmem_alloc(sizeof(bump_allocator));
   bump_alloc->data = cmem_alloc(size);
   bump_alloc->cursor = bump_alloc->data;
   bump_alloc->size = size;
