@@ -5,14 +5,16 @@
 
 #include "network/network_types.inl"
 
-typedef struct router
-{
-    trie* routing_table;
-    darray* public_directory;
+typedef struct router_config {
+} router_config;
+
+typedef struct router {
+  trie *routing_table;
+  router_config conf;
 } router;
 
-router* router_create();
-void router_destroy(router* rtr);
+router *router_create();
+void router_destroy(router *rtr);
 
-void router_add_route(router* rtr, route* rt);
-void router_handle_request(router* rtr, request* req, int client_fd);
+void router_add_route(router *rtr, route *rt);
+void router_handle_request(router *rtr, request *req, int client_fd);

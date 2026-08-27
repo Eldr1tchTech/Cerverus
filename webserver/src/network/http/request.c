@@ -62,22 +62,20 @@ void parse_request_line(request *req, string raw_req_lin) {
 void parse_headers(request *req, string raw_headers) {
   req->headers = darray_create(16, sizeof(header));
 
-  req->headers->length = 0;
+  *darray_get_length(req->headers) = 0;
   if (str_get_len(raw_headers) == 0) {
     return;
   }
 
-  darray *raw_headers_darr = str_split_at_lit(raw_headers, "\r\n");
-
-  string *raw_headers_darr_data = raw_headers_darr->data;
-  for (size_t i = 0; i < raw_headers_darr->length; i++) {
+  string *raw_headers_darr = str_split_at_lit(raw_headers, "\r\n");
+  for (size_t i = 0; i < *darray_get_length(raw_headers_darr); i++) {
 
     header new_header;
-    str_parse_fmt(raw_headers_darr_data[i], "%s: %s", &new_header.name,
+    str_parse_fmt(raw_headers_darr[i], "%s: %s", &new_header.name,
                   &new_header.value);
     darray_add(req->headers, &new_header);
 
-    str_destroy(raw_headers_darr_data[i]);
+    str_destroy(raw_headers_darr[i]);
   }
 
   darray_destroy(raw_headers_darr);
@@ -149,10 +147,9 @@ int request_parse(request *req, char *raw_req, size_t req_len) {
 void request_destroy(request *req) {
   cmem_free(req->request_line.URI);
 
-  header *headers_darr_data = req->headers->data;
-  for (size_t i = 0; i < req->headers->length; i++) {
-    str_destroy(headers_darr_data[i].name);
-    str_destroy(headers_darr_data[i].value);
+  for (size_t i = 0; i < *darray_get_length(req->headers); i++) {
+    str_destroy(req->headers[i].name);
+    str_destroy(req->headers[i].value);
   }
   darray_destroy(req->headers);
 
@@ -164,14 +161,14 @@ void request_destroy(request *req) {
 }
 
 string request_get_header_value(request *req, char *header_name) {
-  header *headers_darr_data = req->headers->data;
-  for (size_t i = 0; i < req->headers->length; i++) {
+  for (size_t i = 0; i < *darray_get_length(req->headers); i++) {
     if (_raw_str_equal_len(
-            headers_darr_data[i].name, str_get_len(headers_darr_data[i].name),
+            req->headers[i].name, str_get_len(req->headers[i].name),
             header_name,
-            raw_str_len(header_name))) // TODO: Eventually make case insensitive
+            raw_str_len(header_name))) // TODO: Eventually make case
+                                       // insensitiveheaders_darr_data
     {
-      return headers_darr_data[i].value;
+      return req->headers[i].value;
     }
   }
   return nullptr;

@@ -1,6 +1,7 @@
 #include "route_trie.h"
 
 #include "core/memory/cmem.h"
+#include "core/util/util.h"
 
 trie_node *trie_node_create() {
   trie_node *new_node = cmem_alloc(sizeof(trie_node));
@@ -13,9 +14,8 @@ trie_node *trie_node_create() {
 }
 
 void trie_node_destroy(trie_node *t_node) {
-  trie_node *darr_data = t_node->children->data;
-  for (int i = 0; i < t_node->children->length; i++) {
-    trie_node_destroy(&darr_data[i]);
+  for (int i = 0; i < *darray_get_length(t_node->children); i++) {
+    trie_node_destroy(&t_node->children[i]);
   }
 
   darray_destroy(t_node->children);
@@ -47,14 +47,13 @@ void trie_destroy(trie *t) {
 void trie_add_route(trie *t, route *rt) {
   trie_node *current = t->roots[rt->method];
 
-  route_segment *segments = rt->segments->data;
-  for (int i = 0; i < rt->segments->length; i++) {
-    trie_node *children = current->children->data;
+  for (int i = 0; i < *darray_get_length(rt->segments); i++) {
+    trie_node *children = current->children;
     trie_node *next = nullptr;
 
     // Search existing children for a matching segment
-    for (int j = 0; j < current->children->length; j++) {
-      if (str_equal(segments[i].path_segment,
+    for (int j = 0; j < *darray_get_length(current->children); j++) {
+      if (str_equal(rt->segments[i].path_segment,
                     children[j].segment.path_segment)) {
         next = &children[j];
         break;
@@ -64,14 +63,12 @@ void trie_add_route(trie *t, route *rt) {
     // Not found — create and attach a new child node
     if (!next) {
       trie_node new_node = {0};
-      new_node.segment.path_segment = str_dup(segments[i].path_segment);
-      new_node.segment.is_dynamic = segments[i].is_dynamic;
+      new_node.segment.path_segment = str_dup(rt->segments[i].path_segment);
+      new_node.segment.is_dynamic = rt->segments[i].is_dynamic;
       new_node.children = darray_create(2, sizeof(trie_node));
       new_node.callback = nullptr;
-      darray_add(current->children, &new_node);
-      // Re-fetch: darray_add may have resized, invalidating old pointer
-      children = current->children->data;
-      next = &children[current->children->length - 1];
+      children = darray_add(current->children, &new_node);
+      next = &children[*darray_get_length(current->children) - 1];
     }
 
     current = next;
@@ -81,42 +78,33 @@ void trie_add_route(trie *t, route *rt) {
 }
 
 route_callback trie_find_handler(trie *t, http_method method, string URI) {
-  darray *segment_darr = str_split_at_lit(URI, "/");
+  string *segment_darr = str_split_at_lit(URI, "/");
 
   trie_node *root = t->roots[method];
 
   // Find the final node
-  route_segment *segment_darr_data = segment_darr->data;
-  for (int i = 0; i < segment_darr->length; i++) {
-    trie_node *children_darr_data = root->children->data;
-    for (int j = 0; j < root->children->length; j++) {
+  for (int i = 0; i < *darray_get_length(segment_darr); i++) {
+    for (int j = 0; j < *darray_get_length(root->children); j++) {
       // Check for static match
-      if (str_equal(segment_darr_data[i].path_segment,
-                    children_darr_data[j].segment.path_segment)) {
-        root = &children_darr_data[j];
+      if (str_equal(segment_darr[i], root->children[j].segment.path_segment)) {
+        root = &root->children[j];
         break;
       }
 
       // Check for dynamic "match" (not really)
-      if (children_darr_data[j].segment.is_dynamic) {
-        root = &children_darr_data[j];
+      if (root->children[j].segment.is_dynamic) {
+        root = &root->children[j];
         break;
       }
 
-      if (j == root->children->length - 1) {
+      if (j == *darray_get_length(root->children) - 1) {
         // Not present
-        for (int k = 0; k < segment_darr->length; k++) {
-          cmem_free(segment_darr_data[k].path_segment);
-        }
-        darray_destroy(segment_darr);
+        darray_destroy_string_helper(segment_darr);
         return nullptr;
       }
     }
   }
-  for (int k = 0; k < segment_darr->length; k++) {
-    cmem_free(segment_darr_data[k].path_segment);
-  }
-  darray_destroy(segment_darr);
+  darray_destroy_string_helper(segment_darr);
 
   return root->callback;
 }

@@ -2,7 +2,6 @@
 
 #include "defines.h"
 
-#include "core/containers/darray.h"
 #include "core/containers/string.h"
 
 #define MAX_HEADER_COUNT 32
@@ -36,7 +35,7 @@ typedef struct request {
     string URI;
     http_version version;
   } request_line;
-  darray *headers;
+  header *headers;
   string body;
 } request;
 
@@ -46,7 +45,7 @@ typedef struct response {
     int status_code;
     string reason_phrase;
   } status_line;
-  darray *headers;
+  header *headers;
   string body;
 } response;
 
@@ -58,13 +57,13 @@ typedef struct route_segment {
 } route_segment;
 
 typedef struct route {
-  darray *segments;
+  route_segment *segments;
   http_method method;
   route_callback callback;
 } route;
 
 typedef struct trie_node {
-  darray *children;
+  struct trie_node *children; // NOTE: may be double pointer
   route_segment segment;
   route_callback callback;
 } trie_node;

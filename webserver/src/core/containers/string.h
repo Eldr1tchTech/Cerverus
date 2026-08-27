@@ -82,9 +82,9 @@ string _str_split_size(string str, const cstr delim, size_t delim_len);
  * @param delim If delim doesn't occur in str, nullptr is returned, str is not
  * considered consumed.
  * @param delim_len
- * @return darray*
+ * @return darray
  */
-darray *_str_split_at_size(string str, const cstr delim, size_t delim_len);
+darray _str_split_at_size(string str, const cstr delim, size_t delim_len);
 
 #define str_split_at_lit(str, delim)                                           \
   _str_split_at_size(str, delim, STR_LIT_LEN(delim))

@@ -3,16 +3,16 @@
 // TODO: Change darray to use a header version, it's just cleaner and nicer
 #include "defines.h"
 
-typedef struct darray {
-  int size;
-  int length;
-  size_t stride;
-  void *data;
-} darray;
+typedef void *darray;
 
-darray *darray_create(int size, size_t stride);
-void darray_destroy(darray *darr);
+// Creation/Destruction
+darray darray_create(size_t size, size_t stride);
+void darray_destroy(darray darr);
 
-void darray_add(darray *darr, void *element);
+// Getters/Setters
+size_t *darray_get_size(darray darr);
+size_t *darray_get_length(darray darr);
+size_t *darray_get_stride(darray darr);
 
-void *darray_get(darray *darr, int index);
+// Accessors
+darray darray_add(darray darr, void *element);

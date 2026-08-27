@@ -1,42 +1,58 @@
 #include "darray.h"
 
 #include "core/memory/cmem.h"
+#include <stddef.h>
 
-darray *darray_create(int size, size_t stride) {
-  darray *darr = cmem_alloc(sizeof(darray));
-  darr->size = size;
-  darr->length = 0;
-  darr->stride = stride;
+typedef struct darray_header {
+  size_t size;
+  size_t length;
+  size_t stride;
+  char data[];
+} darray_header;
 
-  darr->data = cmem_alloc(size * stride);
-  cmem_zmem(darr->data, size * stride);
-
-  return darr;
+darray_header *header_from_darray(darray darr) {
+  return (darray_header *)darr - sizeof(darray_header);
 }
 
-void darray_destroy(darray *darr) {
-  cmem_free(darr->data);
-  cmem_free(darr);
-  darr = 0;
+darray darray_create(size_t size, size_t stride) {
+  darray_header *darr_h = cmem_alloc(sizeof(darray_header) + stride * size);
+  darr_h->size = size;
+  darr_h->length = 0;
+  darr_h->stride = stride;
+
+  return darr_h->data;
 }
 
-void darray_resize(darray *darr, int new_size) {
-  void *temp = cmem_alloc(darr->stride * new_size);
-  cmem_mcpy(temp, darr->data, darr->stride * darr->length);
-  cmem_free(darr->data);
-  darr->data = temp;
-  darr->size = new_size;
+void darray_destroy(darray darr) { cmem_free(darr); }
+
+darray darray_resize(darray darr, size_t new_size) {
+  darray temp_darr = darray_create(new_size, *darray_get_stride(darr));
+  cmem_mcpy(temp_darr, darr,
+            *darray_get_stride(darr) * *darray_get_length(darr));
+  return temp_darr;
 }
 
-void darray_add(darray *darr, void *element) {
-  if (darr->length + 1 >= darr->size) {
-    darray_resize(darr, darr->size * 2);
+// Getters/Setters
+size_t *darray_get_size(darray darr) {
+  darray_header *darr_h = header_from_darray(darr);
+  return &darr_h->size;
+}
+size_t *darray_get_length(darray darr) {
+  darray_header *darr_h = header_from_darray(darr);
+  return &darr_h->length;
+}
+size_t *darray_get_stride(darray darr) {
+  darray_header *darr_h = header_from_darray(darr);
+  return &darr_h->stride;
+}
+
+darray darray_add(darray darr, void *element) {
+  if (*darray_get_length(darr) + 1 >= *darray_get_size(darr)) {
+    darr = darray_resize(darr, *darray_get_size(darr) * 2);
   }
 
-  cmem_mcpy(darr->data + darr->stride * darr->length, element, darr->stride);
-  darr->length++;
-}
-
-void *darray_get(darray *darr, int index) {
-  return darr->data + (darr->stride * index);
+  cmem_mcpy(darr + *darray_get_stride(darr) * *darray_get_length(darr), element,
+            *darray_get_stride(darr));
+  *darray_get_length(darr) += 1;
+  return darr;
 }

@@ -1,7 +1,5 @@
 #pragma once
 
-char* asprintf_cerv(char* fmt, ...);
+#include "core/containers/darray.h"
 
-int strchrc(char* str, char c);
-
-int strchri(char* str, char c);
+void darray_destroy_string_helper(darray darr);
