@@ -1,60 +1,58 @@
-#include "io_uring_helper.h"
+#include "async_io.h"
 
 #include "core/containers/LRU_cache.h"
+#include "core/memory/cmem.h"
 #include "core/util/logger.h"
 #include "core/util/profiler.h"
 #include "network/http/request.h"
 #include "network/http/response.h"
 
 #include <arpa/inet.h>
+#include <fcntl.h>
+#include <liburing.h>
+#include <liburing/io_uring.h>
+#include <linux/stat.h>
 #include <netinet/in.h>
+#include <stddef.h>
 
-typedef struct uring_helper_ctx {
+typedef struct uring_state {
   LRU_cache *file_cache;
-  struct io_uring *ring;
-} uring_helper_ctx;
+  struct io_uring ring;
+} uring_state;
 
-uring_helper_ctx state;
+static uring_state state;
 
 void file_eviction_handler(void *fd) {
-  handle_close_submission(state.ring, *((int *)fd));
+  handle_close_submission(&state.ring, *((int *)fd));
 }
 
-void uring_setup() {
-  if (!state) {
-    if (!state.file_cache) {
-    }
+// TODO: pass uring config
+void async_io_setup() {
+
+  // uring setup
+  struct io_uring_params params;
+  cmem_zmem(&params, sizeof(params));
+  params.flags |= IORING_SETUP_SQPOLL | IORING_SETUP_SQ_AFF;
+  params.sq_thread_cpu = 3;
+  params.sq_thread_idle = 2000; // 2s timeout
+
+  int ret = io_uring_queue_init_params(
+      64, &state.ring,
+      &params); // TODO: solve the magic number issue, maybe make it computed so
+                // that there is a ratio between submission and completion queue
+                // lengths
+  if (ret < 0) {
+    LOG_FATAL("async_io_setup - io_uring init failed.");
+    return;
   }
+
+  // file_cache setup
+  state.file_cache = LRU_cache_create(16, sizeof(FILE), file_eviction_handler);
 }
-void uring_shutdown();
 
-void uring_process_completions(server *srv) {
-  struct io_uring_cqe *cqe;
-
-  while (io_uring_peek_cqe(&srv->uring.ring, &cqe) == 0) {
-    uring_context *ctx = (uring_context *)cqe->user_data;
-
-    switch (ctx->op_type) {
-    case uring_op_type_accept:
-      handle_accept_completion(cqe, ctx);
-      break;
-    case uring_op_type_recv:
-      handle_recv_completion(cqe, ctx);
-      break;
-    case uring_op_type_send:
-      handle_send_completion(cqe, ctx);
-      break;
-    case uring_op_type_openat:
-      handle_openat_completion(cqe, ctx);
-      break;
-    case uring_op_type_close:
-      handle_close_completion(ctx);
-    default:
-      break;
-    }
-
-    io_uring_cqe_seen(&srv->uring.ring, cqe);
-  }
+void async_io_shutdown() {
+  LRU_cache_destroy(state.file_cache);
+  io_uring_queue_exit(&state.ring);
 }
 
 // TODO: Make this just use the normal allocator, don't want weird bugs yet.
@@ -73,7 +71,8 @@ void handle_accept_submission(server *srv) {
   io_uring_submit(&srv->uring.ring);
 }
 
-void handle_accept_completion(struct io_uring_cqe *cqe, uring_context *ctx) {
+void handle_accept_completion(struct io_uring_cqe *cqe,
+                              logical_async_context *ctx) {
   if (cqe->res < 0) {
     LOG_ERROR("handle_accept_completion - accept failed: %d", cqe->res);
   } else {
@@ -147,21 +146,7 @@ void handle_recv_completion(struct io_uring_cqe *cqe, uring_context *ctx) {
   }
 }
 
-// TODO: Eventually implement some sort of LRU_cache
-void handle_openat_submission(uring_context *ctx, char *path) {
-  // Check to see if state is setup, eventually move this somewhere so it isn't
-  // checked every single time
-  if (state.file_cache == nullptr) {
-    state.file_cache = LRU_cache_create(16, sizeof(int), file_eviction_handler);
-  }
-  if (state.ring == nullptr) {
-    state.ring = &ctx->srv->uring.ring;
-  }
-
-  int *fd = LRU_cache_get(state.file_cache, path);
-  if (fd != nullptr) {
-  }
-
+void handle_openat_submission(logical_async_context *ctx, string *path) {
   struct io_uring_sqe *sqe = io_uring_get_sqe(&ctx->srv->uring.ring);
   ctx->op_type = uring_op_type_openat;
 
@@ -226,12 +211,13 @@ void handle_sendfile_submission(uring_context *ctx) {
   io_uring_submit(&ctx->srv->uring.ring);
 }
 
-void handle_sendfile_completion(struct io_uring_cqe *cqe, uring_context *ctx) {}
+void handle_sendfile_completion(struct io_uring_cqe *cqe,
+                                logical_async_context *ctx) {}
 
-void handle_close_submission(struct io_uring *ring, int fd) {
-  struct io_uring_sqe *sqe = io_uring_get_sqe(ring);
-  uring_close_context *ctx = cmem_alloc(sizeof(uring_close_context));
-  ctx->op_type = uring_op_type_close;
+void handle_close_submission(int fd) {
+  struct io_uring_sqe *sqe = io_uring_get_sqe(state.ring);
+  logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
+  ctx->op_type = async_op_type_close;
 
   io_uring_prep_close(sqe, fd);
   io_uring_sqe_set_data(sqe, ctx);
@@ -240,3 +226,87 @@ void handle_close_submission(struct io_uring *ring, int fd) {
 }
 
 void handle_close_completion(uring_context *ctx) { cmem_free(ctx); }
+
+void handle_statx_submission(logical_async_context *ctx, string path) {
+  struct io_uring_sqe *sqe = io_uring_get_sqe(state.ring);
+
+  io_uring_prep_statx(sqe, AT_FDCWD, path, 0, STATX_ALL,
+                      &((FILE *)ctx->internal)->statx_buff);
+
+  io_uring_sqe_set_data(sqe, ctx);
+
+  io_uring_submit(&state.ring);
+}
+
+void handle_statx_completion(struct io_uring_cqe *cqe,
+                             logical_async_context *ctx) {
+  if (cqe->res < 0) {
+    LOG_ERROR("handle_statx_completion - statx failed on %s: %d",
+              ctx->statx.path, cqe->res);
+    return;
+  }
+
+  goto ctx->resume_point; // If I end with a goto, do I need to consume the sqe
+                          // here?
+}
+
+void async_io_process() {
+  struct io_uring_cqe *cqe;
+
+  while (io_uring_peek_cqe(&state.ring, &cqe) == 0) {
+    logical_async_context *ctx = (logical_async_context *)cqe->user_data;
+
+    switch (ctx->op_type) {
+    case async_op_type_accept:
+      handle_accept_completion(cqe, ctx);
+      break;
+    case async_op_type_recv:
+      handle_recv_completion(cqe, ctx);
+      break;
+    case async_op_type_send:
+      handle_send_completion(cqe, ctx);
+      break;
+    case async_op_type_openat:
+      handle_openat_completion(cqe, ctx);
+      break;
+    case async_op_type_close:
+      handle_close_completion(ctx);
+    case async_op_type_statx:
+      handle_statx_completion(cqe, ctx);
+    default:
+      break;
+    }
+
+    io_uring_cqe_seen(&state.ring, cqe);
+  }
+}
+
+void async_io_open_file(string path, FILE *file, void *resume_point) {
+  int *temp_file = LRU_cache_get(state.file_cache, path);
+  if (temp_file != nullptr) {
+    file = temp_file;
+    goto resume_point;
+  } else {
+    file = cmem_alloc(sizeof(FILE));
+    file->path = path;
+    string *path_shards = str_split_at_lit(path, "/");
+    file->name = str_dup(path_shards[darray_get_length(path_shards) - 1]);
+    darray_destroy_string_helper(path_shards);
+
+    logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
+    ctx->op_type = async_op_type_openat;
+    ctx->resume_point = finish;
+    ctx->internal = file;
+
+    handle_openat_submission(ctx);
+    handle_statf_submission(ctx);
+    return;
+
+  finish:
+    if (((FILE *)ctx->internal)->fd && ((FILE *)ctx->internal)->statx_buff) {
+      goto resume_point;
+    } else {
+      return;
+    }
+  }
+}

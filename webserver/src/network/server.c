@@ -5,8 +5,7 @@
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
 #include "core/util/profiler.h"
-#include "core/util/util.h"
-#include "network/IO/io_uring_helper.h"
+#include "network/IO/async_io.h"
 #include "network/http/response.h"
 #include "network/network_util.h"
 
@@ -19,8 +18,6 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-#define QUEUE_DEPTH 64
 
 server *server_create(server_config *s_conf) {
   server *s = cmem_alloc(sizeof(server));
@@ -129,33 +126,18 @@ void server_run(server *srv) {
     return;
   }
 
-  LOG_INFO("Setting up io_uring...");
-
-  struct io_uring_params params;
-  cmem_zmem(&params, sizeof(params));
-  params.flags |= IORING_SETUP_SQPOLL | IORING_SETUP_SQ_AFF;
-  params.sq_thread_cpu = 3;
-  params.sq_thread_idle = 2000; // 2s timeout
-
-  int ret = io_uring_queue_init_params(QUEUE_DEPTH, &srv->uring.ring, &params);
-  if (ret < 0) {
-    LOG_FATAL("server_run - io_uring init failed.");
-    close(srv->socket_fd);
-    return;
-  }
-
-  handle_accept_submission(srv);
+  // TODO: Figure out how accepts will be handles, most likely currently by the
+  // async ctx?
 
   LOG_INFO(
       "Server listening on port %i.\n\tVisit: http://localhost:%i/index.html",
       srv->conf->port, srv->conf->port);
 
   while (true) {
-    uring_process_completions(srv);
+    async_io_process();
   }
 
   close(srv->socket_fd);
-  io_uring_queue_exit(&srv->uring.ring);
 
   server_destroy(srv);
 }

@@ -1,3 +1,4 @@
+#include "network/IO/async_io.h"
 #include <core/memory/cmem.h>
 #include <core/util/logger.h>
 #include <core/util/util.h>
@@ -13,11 +14,14 @@
 #include <core/containers/hashmap.h>
 
 int main() {
+  async_io_setup();
+
   server_config srv_conf = {
       .port = 8080,
   };
 
   server *srv = server_create(&srv_conf);
-
   server_run(srv);
+
+  async_io_shutdown();
 }
