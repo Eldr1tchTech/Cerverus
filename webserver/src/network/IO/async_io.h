@@ -15,10 +15,11 @@ typedef enum async_op_type {
 } async_op_type;
 
 // This is what you store in set_data() - contains everything needed
-// to resume when the operation completes
+typedef void (*async_resume_fn)(struct logical_async_context *ctx);
+
 typedef struct logical_async_context {
   async_op_type op_type;
-  void *resume_point;
+  async_resume_fn resume_point; // was void* — now typed as a callback
   void *internal;
   void *local;
 } logical_async_context;

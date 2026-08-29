@@ -282,7 +282,10 @@ void async_io_process() {
 }
 
 void async_io_open_file(string path, FILE *file, void *resume_point) {
-  int *temp_file = LRU_cache_get(state.file_cache, path);
+  if (resume_point == nullptr) {
+    *goto finish;
+  }
+  FILE *temp_file = LRU_cache_get(state.file_cache, path);
   if (temp_file != nullptr) {
     file = temp_file;
     goto resume_point;
@@ -295,7 +298,7 @@ void async_io_open_file(string path, FILE *file, void *resume_point) {
 
     logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
     ctx->op_type = async_op_type_openat;
-    ctx->resume_point = finish;
+    ctx->resume_point = async_io_open_file;
     ctx->internal = file;
 
     handle_openat_submission(ctx);
