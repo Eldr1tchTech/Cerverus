@@ -152,13 +152,16 @@ void handle_openat_submission(logical_async_context *ctx, string *path) {
   io_uring_submit(&ctx->srv->uring.ring);
 }
 
-void handle_openat_completion(struct io_uring_cqe *cqe, uring_context *ctx) {
+void handle_openat_completion(struct io_uring_cqe *cqe,
+                              logical_async_context *ctx) {
   if (cqe->res <= 0) {
     LOG_ERROR("handle_openat_completion - Failed.");
     return;
   }
 
-  ctx->file_fd = cqe->res;
+  ctx->openat.fd = cqe->res;
+
+  ctx->pt_state.self(ctx);
 }
 
 void handle_send_submission(uring_context *ctx) {
@@ -223,11 +226,10 @@ void handle_close_submission(int fd) {
 
 void handle_close_completion(uring_context *ctx) { cmem_free(ctx); }
 
-void handle_statx_submission(logical_async_context *ctx, string path) {
+void handle_statx_submission(logical_async_context *ctx, int fd) {
   struct io_uring_sqe *sqe = io_uring_get_sqe(state.ring);
 
-  io_uring_prep_statx(sqe, AT_FDCWD, path, 0, STATX_ALL,
-                      &((FILE *)ctx->internal)->statx_buff);
+  io_uring_prep_statx(sqe, AT_FDCWD, fd, 0, STATX_ALL, &ctx->statx.statx_buff);
 
   io_uring_sqe_set_data(sqe, ctx);
 
@@ -237,13 +239,11 @@ void handle_statx_submission(logical_async_context *ctx, string path) {
 void handle_statx_completion(struct io_uring_cqe *cqe,
                              logical_async_context *ctx) {
   if (cqe->res < 0) {
-    LOG_ERROR("handle_statx_completion - statx failed on %s: %d",
-              ctx->statx.path, cqe->res);
+    LOG_ERROR("handle_statx_completion - statx failed");
     return;
   }
 
-  goto ctx->resume_point; // If I end with a goto, do I need to consume the sqe
-                          // here?
+  ctx->pt_state.self(ctx);
 }
 
 void async_io_process() {
@@ -277,7 +277,6 @@ void async_io_process() {
   }
 }
 
-// TODO: Create a macro that adds a pt_state on the front of a struct.
 void async_io_open_file(open_file_ctx *of_ctx) {
   // Cache check to maybe skip async
   // Figure out how to not do this everytime?????
@@ -290,10 +289,10 @@ void async_io_open_file(open_file_ctx *of_ctx) {
   PT_BEGIN(of_ctx->state, async_io_open_file);
 
   // Fill out syncronous parts
-  file = cmem_alloc(sizeof(FILE));
-  file->path = path;
+  of_ctx = cmem_alloc(sizeof(FILE));
+  of_ctx->file->path = path;
   string *path_shards = str_split_at_lit(path, "/");
-  file->name = str_dup(path_shards[darray_get_length(path_shards) - 1]);
+  of_ctx->file->name = str_dup(path_shards[darray_get_length(path_shards) - 1]);
   darray_destroy_string_helper(path_shards);
 
   PT_WAIT(of_ctx->state,
@@ -304,6 +303,8 @@ void async_io_open_file(open_file_ctx *of_ctx) {
   PT_WAIT(of_ctx->state,
           handle_statx_submission(
               ctx)); // Why even have this be async? just pass as parameter?
+
+  // Add to cache
 
   PT_END(of_ctx->state);
 }

@@ -6,24 +6,30 @@
 #include "core/containers/string.h"
 #include "core/util/protothread.h"
 
-typedef enum async_op_type {
-  async_op_type_accept,
-  async_op_type_recv,
-  async_op_type_openat,
-  async_op_type_send,
-  async_op_type_sendfile,
-  async_op_type_close,
-  async_op_type_statx,
-} async_op_type;
-
-// This is what you store in set_data() - contains everything needed
-typedef void (*async_resume_fn)(struct logical_async_context *ctx);
+typedef enum uring_op_type {
+  uring_op_type_accept,
+  uring_op_type_recv,
+  uring_op_type_openat,
+  uring_op_type_send,
+  uring_op_type_sendfile,
+  uring_op_type_close,
+  uring_op_type_statx,
+} uring_op_type;
 
 typedef struct logical_async_context {
+  uring_op_type op_type;
   protothread_state pt_state;
-  async_op_type op_type;
-  void *internal;
-  void *local;
+  union {
+    struct {
+      struct statx *statx_buff;
+    } statx;
+    struct {
+      int *fd;
+    } openat;
+    struct {
+
+    } close;
+  };
 } logical_async_context;
 
 typedef struct FILE {
@@ -68,6 +74,15 @@ typedef struct open_file_ctx {
 } open_file_ctx;
 
 void async_io_open_file(open_file_ctx *of_ctx);
+
+typedef struct open_file_ctx {
+  protothread_state state;
+
+  string path;
+  FILE *file;
+
+  protothread_state caller_ctx;
+} open_file_ctx;
 
 void async_io_send_buffer(string str);
 
