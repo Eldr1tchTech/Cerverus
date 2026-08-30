@@ -277,22 +277,35 @@ void async_io_process() {
   }
 }
 
-void async_io_open_file(string path, FILE *file) {
-  FILE *temp_file = LRU_cache_get(state.file_cache, path);
+// TODO: Create a macro that adds a pt_state on the front of a struct.
+void async_io_open_file(open_file_ctx *of_ctx) {
+  // Cache check to maybe skip async
+  // Figure out how to not do this everytime?????
+  FILE *temp_file = LRU_cache_get(state.file_cache, of_ctx->path);
   if (temp_file != nullptr) {
-    file = temp_file;
-    return;
-  } else {
-    file = cmem_alloc(sizeof(FILE));
-    file->path = path;
-    string *path_shards = str_split_at_lit(path, "/");
-    file->name = str_dup(path_shards[darray_get_length(path_shards) - 1]);
-    darray_destroy_string_helper(path_shards);
-
-    handle_openat_submission(ctx);
-    handle_statf_submission(ctx);
+    cmem_mcpy(of_ctx->file, temp_file, sizeof(FILE));
     return;
   }
+
+  PT_BEGIN(of_ctx->state, async_io_open_file);
+
+  // Fill out syncronous parts
+  file = cmem_alloc(sizeof(FILE));
+  file->path = path;
+  string *path_shards = str_split_at_lit(path, "/");
+  file->name = str_dup(path_shards[darray_get_length(path_shards) - 1]);
+  darray_destroy_string_helper(path_shards);
+
+  PT_WAIT(of_ctx->state,
+          handle_openat_submission(
+              ctx)); // Why even have this be async? just pass as parameter?
+                     // Also since it returns early can't the state go out of
+                     // context before it is written back into?
+  PT_WAIT(of_ctx->state,
+          handle_statx_submission(
+              ctx)); // Why even have this be async? just pass as parameter?
+
+  PT_END(of_ctx->state);
 }
 
 void async_io_send_buffer(string str) {}

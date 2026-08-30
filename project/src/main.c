@@ -24,13 +24,15 @@ typedef struct test_locals {
   response *res;
 } test_locals;
 
-void route_callback_test(logical_async_context *ctx) {
-  ASYNC_BEGIN(ctx, route_callback_test);
+void route_callback_test(void *ctx) {
+  // Just offset calculations, so very cheap
+  protothread_state *state = ctx;
+  test_locals *locals = ((logical_async_context *)ctx)->local;
 
-  test_locals *locals = ctx->local;
+  PT_BEGIN(state, route_callback_test);
   locals = cmem_alloc(sizeof(test_locals));
 
-  ASYNC(ctx, async_io_open_file("assets/public/test.html", &locals->file));
+  PT_WAIT(state, async_io_open_file("assets/public/test.html", &locals->file));
 
   // Setup status line
   locals->res->status_line.version = http_version_1p1;
@@ -42,7 +44,7 @@ void route_callback_test(logical_async_context *ctx) {
   // TODO: Make this more user-friendly
   // Content-Type
   string str_temp = str_dup(locals->file.name);
-  string str_type = string_split_literal(str_temp, ".");
+  string str_type = str_split_lit(str_temp, ".");
   header h = {.name = str_create_lit("Content-Type"),
               .value = content_type_val_helper(str_type)};
   response_add_header(locals->res, h);
@@ -59,17 +61,17 @@ void route_callback_test(logical_async_context *ctx) {
 
   // Send headers
   string raw_res = response_serialize(locals->res);
-  ASYNC(ctx, async_io_send_buffer(raw_res));
+  PT_WAIT(state, async_io_send_buffer(raw_res));
   str_destroy(raw_res);
 
   // Send file
-  ASYNC(ctx, async_io_sendfile(locals->file.fd));
+  PT_WAIT(state, async_io_sendfile(locals->file.fd));
 
   // Cleanup
   cmem_free(locals);
   // NOTE: destroy ctx?
 
-  ASYNC_END(ctx);
+  PT_END(state);
 }
 
 int main() {

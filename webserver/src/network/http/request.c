@@ -95,7 +95,7 @@ int request_parse(request *req, char *raw_req, size_t req_len) {
     }
   } else {
     // STATUS LINE
-    string raw_req_lin = string_split_literal(raw_req, "\r\n");
+    string raw_req_lin = str_split_lit(raw_req, "\r\n");
     parse_request_line(req, raw_req_lin);
     str_destroy(raw_req_lin);
 
@@ -107,7 +107,7 @@ int request_parse(request *req, char *raw_req, size_t req_len) {
     }
 
     // HEADERS
-    string raw_headers = string_split_literal(raw_req, "\r\n\r\n");
+    string raw_headers = str_split_lit(raw_req, "\r\n\r\n");
     parse_headers(req, raw_headers);
     str_destroy(raw_headers); // WARN: unsure as to whether this is
                               // destroying one of the headers...

@@ -48,7 +48,8 @@ void send_file_response(int client_fd, int file_fd, int status_code,
   header h = {.name = str_create_lit("Content-Type")};
   response_add_header(res, (header){.name = "Content-Type",
                                     .value = content_type_val_helper(ext)});
-  char *content_length_str = asprintf_cerv("%i", file_stat.st_size);
+  char *content_length_str =
+      asprintf_cerv("%i", file_stat.st_size); // Legacy code, remove eventually
   // Content-Length
   response_add_header(
       res, (header){.name = "Content-Length", .value = content_length_str});

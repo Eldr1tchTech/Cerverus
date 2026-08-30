@@ -15,6 +15,9 @@ A high performance webserver made for linux first, should eventually also be abl
 - Security / Controls: Cache-Control, X-Content-Type-Options
 - Entity / Content Details: Content-Type, Content-Length, Content-Encoding
 
+## Rambling
+So every uring submission gets an protothread_context, at the end it calls into said function with the state, the context includes an optional struct that can store locals (use X macros for that, this will allow for precompilation size calcualtions)
+
 ## Prerequisites
 
 - make

@@ -32,7 +32,7 @@ void router_handle_request(router *rtr, request *request, int client_fd) {
   // Implement public directory hashmap here.
   if (request->request_line.method == http_method_get) {
     string temp_file_name = str_dup(request->request_line.URI);
-    string ext = string_split_literal(temp_file_name, ".");
+    string ext = str_split_lit(temp_file_name, ".");
 
     if (ext) {
       char *file_name = "assets/public";

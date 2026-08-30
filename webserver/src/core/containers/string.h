@@ -68,7 +68,7 @@ bool str_parse_u64(string str, u64 *out);
  * @return string The contents before the delim
  */
 string _str_split_size(string str, const cstr delim, size_t delim_len);
-#define string_split_literal(str, delim)                                       \
+#define str_split_lit(str, delim)                                              \
   _str_split_size(str, delim, STR_LIT_LEN(delim))
 
 /**

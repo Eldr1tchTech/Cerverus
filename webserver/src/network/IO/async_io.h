@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 #include "core/containers/string.h"
+#include "core/util/protothread.h"
 
 typedef enum async_op_type {
   async_op_type_accept,
@@ -19,8 +20,7 @@ typedef enum async_op_type {
 typedef void (*async_resume_fn)(struct logical_async_context *ctx);
 
 typedef struct logical_async_context {
-  async_resume_fn resume_point;
-  void *resume_label;
+  protothread_state pt_state;
   async_op_type op_type;
   void *internal;
   void *local;
@@ -58,7 +58,16 @@ void handle_close_completion(logical_async_context *ctx);
 
 void async_io_process();
 
-void async_io_open_file(string path, FILE *file);
+typedef struct open_file_ctx {
+  protothread_state state;
+
+  string path;
+  FILE *file;
+
+  protothread_state caller_ctx;
+} open_file_ctx;
+
+void async_io_open_file(open_file_ctx *of_ctx);
 
 void async_io_send_buffer(string str);
 

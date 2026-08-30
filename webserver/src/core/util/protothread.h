@@ -1,10 +1,11 @@
 #pragma once
 
-#include "network/IO/async_io.h";
-
-// NOTE: maybe move to async_io
-
 // Protothreads via computed goto (GNU/Clang extension: `&&label`, `goto *ptr`).
+
+typedef struct protothread_state {
+  void *resume_label;
+  void (*self)(void *frame);
+} protothread_state;
 
 // Aliasing
 #define PT_CONCAT_(a, b) a##b
@@ -13,22 +14,22 @@
 
 // Dispatches to the saved suspend point, or falls through to the top on
 // a fresh call.
-#define ASYNC_BEGIN(ctx, fn)                                                   \
+#define PT_BEGIN(pt_ptr, fn)                                                   \
   do {                                                                         \
-    (ctx)->resume_point = (fn);                                                \
-    if ((ctx)->resume_label)                                                   \
-      goto *(ctx)->resume_label;                                               \
+    (pt_ptr)->self = (fn);                                                     \
+    if ((pt_ptr)->resume_label)                                                \
+      goto *(pt_ptr)->resume_label;                                            \
   } while (0)
 
 // Submits async work, records where to resume, and returns control to the
 // caller (the event loop). Re-entry via a fresh function call lands exactly
 // at the label below, past the case-equivalent.
-#define ASYNC(ctx, submit_expr)                                                \
+#define PT_WAIT(pt_ptr, submit_expr)                                           \
   do {                                                                         \
-    (ctx)->resume_label = &&ASYYNC_LABEL_NAME;                                 \
+    (pt_ptr)->resume_label = &&PT_LABEL_NAME;                                  \
     submit_expr;                                                               \
     return;                                                                    \
-  ASYNC_LABEL_NAME:;                                                           \
+  PT_LABEL_NAME:;                                                              \
   } while (0)
 
-#define ASYNC_END(ctx) ((ctx)->resume_label = nullptr)
+#define PT_END(pt_ptr) ((pt_ptr)->resume_label = nullptr)
