@@ -4,7 +4,7 @@
 #include "core/util/util.h"
 #include "network/network_util.h"
 
-route *route_create(http_method method, char *URI, route_callback callback) {
+route *route_create(http_method method, char *URI, async_resume_fn callback) {
   route *new_route = cmem_alloc(sizeof(route));
 
   new_route->segments = parse_URI(URI);
@@ -16,10 +16,7 @@ route *route_create(http_method method, char *URI, route_callback callback) {
 }
 
 void route_destroy(route *rt) {
-  route_segment *darr_data = rt->segments->data;
-  for (int i = 0; i < rt->segments->length; i++) {
-    cmem_free(darr_data[i].path_segment);
-  }
+  darray_destroy_string_helper(rt->segments);
   darray_destroy(rt->segments);
   cmem_free(rt);
 }

@@ -13,7 +13,7 @@ typedef struct router {
   router_config conf;
 } router;
 
-router *router_create();
+router *router_create(router_config *rtr_conf);
 void router_destroy(router *rtr);
 
 void router_add_route(router *rtr, route *rt);

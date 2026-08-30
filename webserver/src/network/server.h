@@ -28,7 +28,7 @@ typedef struct server {
   router *rtr;
 } server;
 
-server *server_create(server_config *s_conf);
+server *server_create(server_config *s_conf, router *rtr);
 
 void server_run(server *s);
 

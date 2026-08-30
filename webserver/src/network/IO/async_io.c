@@ -56,19 +56,15 @@ void async_io_shutdown() {
 }
 
 // TODO: Make this just use the normal allocator, don't want weird bugs yet.
-void handle_accept_submission(server *srv) {
-  struct io_uring_sqe *sqe = io_uring_get_sqe(&srv->uring.ring);
+void handle_accept_submission() {
+  struct io_uring_sqe *sqe = io_uring_get_sqe(&state.ring);
 
-  if (!ctx)
-    LOG_FATAL(
-        "handle_accept_submission - Requesting another ctx struct failed.");
-  ctx->srv = srv;
-  ctx->op_type = uring_op_type_accept;
+  // TODO: Finish figuring this out...
 
-  io_uring_prep_multishot_accept(sqe, srv->socket_fd, nullptr, nullptr, 0);
+  io_uring_prep_multishot_accept(sqe, , nullptr, nullptr, 0);
   io_uring_sqe_set_data(sqe, ctx);
 
-  io_uring_submit(&srv->uring.ring);
+  io_uring_submit(&state.ring);
 }
 
 void handle_accept_completion(struct io_uring_cqe *cqe,
@@ -281,14 +277,11 @@ void async_io_process() {
   }
 }
 
-void async_io_open_file(string path, FILE *file, void *resume_point) {
-  if (resume_point == nullptr) {
-    *goto finish;
-  }
+void async_io_open_file(string path, FILE *file) {
   FILE *temp_file = LRU_cache_get(state.file_cache, path);
   if (temp_file != nullptr) {
     file = temp_file;
-    goto resume_point;
+    return;
   } else {
     file = cmem_alloc(sizeof(FILE));
     file->path = path;
@@ -296,20 +289,12 @@ void async_io_open_file(string path, FILE *file, void *resume_point) {
     file->name = str_dup(path_shards[darray_get_length(path_shards) - 1]);
     darray_destroy_string_helper(path_shards);
 
-    logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
-    ctx->op_type = async_op_type_openat;
-    ctx->resume_point = async_io_open_file;
-    ctx->internal = file;
-
     handle_openat_submission(ctx);
     handle_statf_submission(ctx);
     return;
-
-  finish:
-    if (((FILE *)ctx->internal)->fd && ((FILE *)ctx->internal)->statx_buff) {
-      goto resume_point;
-    } else {
-      return;
-    }
   }
 }
+
+void async_io_send_buffer(string str) {}
+
+void async_io_sendfile(int fd) {}

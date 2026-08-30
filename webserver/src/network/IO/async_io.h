@@ -1,6 +1,7 @@
 #pragma once
 
 #include <liburing.h>
+#include <stddef.h>
 
 #include "core/containers/string.h"
 
@@ -18,8 +19,9 @@ typedef enum async_op_type {
 typedef void (*async_resume_fn)(struct logical_async_context *ctx);
 
 typedef struct logical_async_context {
+  async_resume_fn resume_point;
+  void *resume_label;
   async_op_type op_type;
-  async_resume_fn resume_point; // was void* — now typed as a callback
   void *internal;
   void *local;
 } logical_async_context;
@@ -34,12 +36,6 @@ typedef struct FILE {
 // NOTE: If not appropriately called, may cause weird crashes.
 void async_io_setup();
 void async_io_shutdown();
-
-void async_io_process();
-
-void async_io_open_file(string path, FILE *file);
-
-#define ASYNC()
 
 void handle_accept_submission(logical_async_context *ctx);
 void handle_accept_completion(struct io_uring_cqe *cqe,
@@ -59,3 +55,11 @@ void handle_sendfile_completion(struct io_uring_cqe *cqe,
 
 void handle_close_submission(struct io_uring *ring, int fd);
 void handle_close_completion(logical_async_context *ctx);
+
+void async_io_process();
+
+void async_io_open_file(string path, FILE *file);
+
+void async_io_send_buffer(string str);
+
+void async_io_sendfile(int fd);

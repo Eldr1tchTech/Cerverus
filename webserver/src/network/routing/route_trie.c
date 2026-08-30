@@ -77,7 +77,7 @@ void trie_add_route(trie *t, route *rt) {
   current->callback = rt->callback;
 }
 
-route_callback trie_find_handler(trie *t, http_method method, string URI) {
+async_resume_fn trie_find_handler(trie *t, http_method method, string URI) {
   string *segment_darr = str_split_at_lit(URI, "/");
 
   trie_node *root = t->roots[method];

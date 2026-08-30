@@ -1,5 +1,6 @@
 #pragma once
 
+#include "IO/async_io.h"
 #include "core/containers/string.h"
 
 #define MAX_HEADER_COUNT 32
@@ -47,8 +48,6 @@ typedef struct response {
   string body;
 } response;
 
-typedef void (*route_callback)(request *req, int client_fd);
-
 typedef struct route_segment {
   string path_segment;
   bool is_dynamic;
@@ -57,13 +56,13 @@ typedef struct route_segment {
 typedef struct route {
   route_segment *segments;
   http_method method;
-  route_callback callback;
+  async_resume_fn callback;
 } route;
 
 typedef struct trie_node {
   struct trie_node *children;
   route_segment segment;
-  route_callback callback;
+  async_resume_fn callback;
 } trie_node;
 
 typedef struct trie {

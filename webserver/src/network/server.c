@@ -19,10 +19,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-server *server_create(server_config *s_conf) {
+server *server_create(server_config *s_conf, router *rtr) {
   server *s = cmem_alloc(sizeof(server));
   s->conf = s_conf;
-  s->rtr = router_create();
+  s->rtr = rtr;
 
   return s;
 }

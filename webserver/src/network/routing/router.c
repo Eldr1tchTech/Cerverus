@@ -2,10 +2,12 @@
 
 #include "core/memory/cmem.h"
 #include "core/util/util.h"
+#include "network/IO/async_io.h"
 #include "network/routing/route_trie.h"
 
-router *router_create() {
+router *router_create(router_config *rtr_conf) {
   router *rtr = cmem_alloc(sizeof(router));
+  cmem_mcpy(&rtr->conf, rtr_conf, sizeof(router_config));
 
   return rtr;
 }
@@ -47,7 +49,7 @@ void router_handle_request(router *rtr, request *request, int client_fd) {
 
   // 2. Check against dynamic registered routes
   if (rtr && rtr->routing_table) {
-    route_callback handler =
+    async_resume_fn handler =
         trie_find_handler(rtr->routing_table, request->request_line.method,
                           request->request_line.URI);
 
