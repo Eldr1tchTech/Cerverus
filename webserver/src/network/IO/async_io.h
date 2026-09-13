@@ -64,8 +64,10 @@ typedef struct FILE {
 } FILE;
 
 // NOTE: If not appropriately called, may cause weird crashes.
-void async_io_setup(int srv_fd, u64 max_connections, router *rtr);
+void async_io_setup(u64 connections);
 void async_io_shutdown();
+
+void async_io_update_values(int server_fd, router *rtr);
 
 void handle_accept_submission();
 void handle_accept_completion(struct io_uring_cqe *cqe,
@@ -99,16 +101,12 @@ void handle_close_completion(struct io_uring_cqe *cqe,
 
 void async_io_process();
 
-typedef struct open_file_ctx {
-  protothread_state state;
-
+typedef struct open_file_locals {
   string path;
   FILE *file;
+} open_file_locals;
 
-  protothread_state *caller_ctx;
-} open_file_ctx;
-
-void async_io_open_file(open_file_ctx *of_ctx);
+void async_io_open_file(protothread_state *pt_state);
 
 void async_io_send_buffer(string str);
 

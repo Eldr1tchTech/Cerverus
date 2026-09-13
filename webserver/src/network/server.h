@@ -31,6 +31,3 @@ typedef struct server {
 server *server_create(server_config *s_conf, router *rtr);
 
 void server_run(server *s);
-
-void send_file_response(int client_fd, int file_fd, int status_code,
-                        string reason_phrase, string ext);

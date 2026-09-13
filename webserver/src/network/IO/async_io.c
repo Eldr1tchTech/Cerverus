@@ -38,10 +38,8 @@ struct io_uring_sqe *io_uring_get_sqe_wrapper() {
 void file_eviction_handler(void *fd) { handle_close_submission(*((int *)fd)); }
 
 // TODO: pass uring config
-void async_io_setup(int srv_fd, u64 connections, router *rtr) {
-  state.srv_fd = srv_fd;
+void async_io_setup(u64 connections) {
   state.connections = connections;
-  state.rtr = rtr;
 
   // uring setup
   struct io_uring_params params;
@@ -67,6 +65,11 @@ void async_io_setup(int srv_fd, u64 connections, router *rtr) {
 void async_io_shutdown() {
   LRU_cache_destroy(state.file_cache);
   io_uring_queue_exit(&state.ring);
+}
+
+void async_io_update_values(int server_fd, router *rtr) {
+  state.srv_fd = server_fd;
+  state.rtr = rtr;
 }
 
 void handle_accept_submission() {
@@ -264,7 +267,8 @@ void handle_statx_submission(int fd, struct statx *statx_buff,
   ctx->statx.statx_buff = statx_buff;
   ctx->pt_state = pt_state;
 
-  io_uring_prep_statx(sqe, AT_FDCWD, fd, 0, STATX_ALL, ctx->statx.statx_buff);
+  io_uring_prep_statx(sqe, fd, "", AT_EMPTY_PATH, STATX_ALL,
+                      ctx->statx.statx_buff);
 
   io_uring_sqe_set_data(sqe, ctx);
 
@@ -312,33 +316,39 @@ void async_io_process() {
   }
 }
 
-void async_io_open_file(open_file_ctx *of_ctx) {
+void async_io_open_file(protothread_state *pt_state) {
+  open_file_locals *locals = (open_file_locals *)pt_state->locals;
+
   // Cache check to maybe skip async
   // Figure out how to not do this everytime?????
-  FILE *temp_file = LRU_cache_get(state.file_cache, of_ctx->path);
+  FILE *temp_file = LRU_cache_get(state.file_cache, locals->path);
   if (temp_file != nullptr) {
-    cmem_mcpy(of_ctx->file, temp_file, sizeof(FILE));
+    cmem_mcpy(locals->file, temp_file, sizeof(FILE));
     return;
   }
 
-  PT_BEGIN(&of_ctx->state, async_io_open_file); // NOTE: Figure this out, RESUME
+  PT_BEGIN(pt_state, async_io_open_file);
 
-  // Fill out syncronous parts
-  of_ctx = cmem_alloc(sizeof(FILE));
-  string *path_shards = str_split_at_lit(of_ctx->path, "/");
-  of_ctx->file->name =
+  // Fill out synchronous parts
+  locals->file = cmem_alloc(sizeof(FILE));
+  string *path_shards = str_split_at_lit(locals->path, "/");
+  locals->file->name =
       str_dup(path_shards[*darray_get_length(path_shards) - 1]);
   darray_destroy_string_helper(path_shards);
 
-  PT_WAIT(&of_ctx->state, handle_openat_submission(
-                              of_ctx->path, &of_ctx->file->fd, &of_ctx->state));
-  PT_WAIT(&of_ctx->state,
-          handle_statx_submission(of_ctx->file->fd, &of_ctx->file->statx_buff,
-                                  &of_ctx->state));
+  PT_WAIT(pt_state,
+          handle_openat_submission(locals->path, &locals->file->fd, pt_state));
+  PT_WAIT(pt_state, handle_statx_submission(
+                        locals->file->fd, &locals->file->statx_buff, pt_state));
 
   // Add to cache
+  LRU_cache_add(
+      state.file_cache, locals->path,
+      locals->file); // NOTE: may be necessary to adopt a facotry-like approach
+                     // for duplicating complex structs, especially if they
+                     // include strings and the like
 
-  PT_END(&of_ctx->state);
+  PT_END(pt_state);
 }
 
 void async_io_send_buffer(string str) {}

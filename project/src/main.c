@@ -31,11 +31,13 @@ void route_callback_test(protothread_state *state) {
   PT_BEGIN(state, route_callback_test);
   locals = cmem_realloc(state->locals, sizeof(test_locals));
 
-  open_file_ctx *of_ctx = cmem_alloc(sizeof(open_file_ctx));
-  of_ctx->path = str_create_lit("assets/public/test.html");
-  of_ctx->file = &locals->file;
-  of_ctx->caller_ctx = state;
-  PT_WAIT(state, async_io_open_file(of_ctx));
+  protothread_state *open_file_state = cmem_alloc(sizeof(protothread_state));
+  open_file_state->locals = cmem_alloc(sizeof(open_file_locals));
+  ((open_file_locals *)open_file_state->locals)->path =
+      str_create_lit("assets/public/test.html");
+  ((open_file_locals *)open_file_state->locals)->file = &locals->file;
+  open_file_state->caller = state;
+  PT_WAIT(state, async_io_open_file(open_file_state));
 
   // Setup status line
   locals->res->status_line.version = http_version_1p1;
@@ -78,7 +80,7 @@ void route_callback_test(protothread_state *state) {
 }
 
 int main() {
-  async_io_setup();
+  async_io_setup(64);
 
   // Router setup
   router_config rtr_conf = {};
@@ -93,6 +95,8 @@ int main() {
       .port = 8080,
   };
   server *srv = server_create(&srv_conf, rtr);
+
+  async_io_update_values(srv->socket_fd, rtr);
 
   server_run(srv);
 
