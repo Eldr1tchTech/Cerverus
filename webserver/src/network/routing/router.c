@@ -1,8 +1,10 @@
 #include "router.h"
 
+// TODO: rewrite the send_file_response using protothreads/async properly, also
+// remember to properly use the caller resume in all of the uring methods that
+// take a protothread_state
+
 #include "core/memory/cmem.h"
-#include "core/util/util.h"
-#include "network/IO/async_io.h"
 #include "network/routing/route_trie.h"
 
 router *router_create(router_config *rtr_conf) {
