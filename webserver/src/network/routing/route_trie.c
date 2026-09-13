@@ -47,13 +47,13 @@ void trie_destroy(trie *t) {
 void trie_add_route(trie *t, route *rt) {
   trie_node *current = t->roots[rt->method];
 
-  for (int i = 0; i < *darray_get_length(rt->segments); i++) {
+  for (int i = 0; i < *darray_get_length(rt->segments_darr); i++) {
     trie_node *children = current->children;
     trie_node *next = nullptr;
 
     // Search existing children for a matching segment
     for (int j = 0; j < *darray_get_length(current->children); j++) {
-      if (str_equal(rt->segments[i].path_segment,
+      if (str_equal(rt->segments_darr[i].path_segment,
                     children[j].segment.path_segment)) {
         next = &children[j];
         break;
@@ -63,8 +63,9 @@ void trie_add_route(trie *t, route *rt) {
     // Not found — create and attach a new child node
     if (!next) {
       trie_node new_node = {0};
-      new_node.segment.path_segment = str_dup(rt->segments[i].path_segment);
-      new_node.segment.is_dynamic = rt->segments[i].is_dynamic;
+      new_node.segment.path_segment =
+          str_dup(rt->segments_darr[i].path_segment);
+      new_node.segment.is_dynamic = rt->segments_darr[i].is_dynamic;
       new_node.children = darray_create(2, sizeof(trie_node));
       new_node.callback = nullptr;
       children = darray_add(current->children, &new_node);
@@ -77,7 +78,7 @@ void trie_add_route(trie *t, route *rt) {
   current->callback = rt->callback;
 }
 
-async_resume_fn trie_find_handler(trie *t, http_method method, string URI) {
+pt_fn trie_find_handler(trie *t, http_method method, string URI) {
   string *segment_darr = str_split_at_lit(URI, "/");
 
   trie_node *root = t->roots[method];

@@ -54,7 +54,7 @@ typedef struct route_segment {
 } route_segment;
 
 typedef struct route {
-  route_segment *segments;
+  route_segment *segments_darr;
   http_method method;
   pt_fn callback;
 } route;

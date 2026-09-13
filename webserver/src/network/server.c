@@ -27,49 +27,6 @@ server *server_create(server_config *s_conf, router *rtr) {
   return s;
 }
 
-// TODO: refactor this and the io_uring to use the async definitions/format
-// created
-void send_file_response(int client_fd, int file_fd, int status_code,
-                        string reason_phrase, string ext) {
-  // 1. Assemble response
-  // TODO: Eventually use a pool for this
-  response *res = response_create();
-
-  res->status_line.version = http_version_1p1;
-  res->status_line.status_code = status_code;
-  res->status_line.reason_phrase = reason_phrase;
-
-  // TODO: refactor this to use the file hashmap
-  struct stat file_stat;
-  fstat(file_fd, &file_stat);
-
-  // Headers
-  // Content-Type
-  header h = {.name = str_create_lit("Content-Type")};
-  response_add_header(res, (header){.name = "Content-Type",
-                                    .value = content_type_val_helper(ext)});
-  char *content_length_str =
-      asprintf_cerv("%i", file_stat.st_size); // Legacy code, remove eventually
-  // Content-Length
-  response_add_header(
-      res, (header){.name = "Content-Length", .value = content_length_str});
-  response_add_header(res, (header){.name = "Connection", .value = "close"});
-  // TODO: Date
-
-  // 2. Send response and file
-  string raw = response_serialize(res);
-  send(client_fd, raw, str_get_len(raw), MSG_NOSIGNAL);
-  sendfile(client_fd, file_fd, 0, file_stat.st_size);
-  str_destroy(raw);
-  str_destroy(content_length_str); // Find some way to get rid of this...
-  /* IDEA:
-  Allocate a buffer that should be big enough, use snprintf, if it fails,
-  allocate enough
-  */
-
-  close(file_fd);
-}
-
 void server_destroy(server *s) { cmem_free(s); }
 
 bool server_setup(server *srv) {

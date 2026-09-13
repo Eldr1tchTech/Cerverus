@@ -2,6 +2,8 @@
 
 // Protothreads via computed goto (GNU/Clang extension: `&&label`, `goto *ptr`).
 
+struct protothread_state;
+
 typedef void (*pt_fn)(struct protothread_state *state);
 
 typedef struct protothread_state {

@@ -4,6 +4,7 @@
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
 #include "core/util/profiler.h"
+#include "core/util/util.h"
 #include "network/http/request.h"
 
 #include <arpa/inet.h>
@@ -34,9 +35,7 @@ struct io_uring_sqe *io_uring_get_sqe_wrapper() {
   return sqe;
 }
 
-void file_eviction_handler(void *fd) {
-  handle_close_submission(&state.ring, *((int *)fd));
-}
+void file_eviction_handler(void *fd) { handle_close_submission(*((int *)fd)); }
 
 // TODO: pass uring config
 void async_io_setup(int srv_fd, u64 connections, router *rtr) {
@@ -100,7 +99,7 @@ void handle_recv_submission(int client_fd, recv_context *recv_ctx) {
 
   logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
   ctx->op_type = uring_op_type_recv;
-  ctx.recv.client_fd = client_fd;
+  ctx->recv.client_fd = client_fd;
   if (recv_ctx) {
     cmem_mcpy(&ctx->recv, recv_ctx, sizeof(recv_context));
   } else {
@@ -194,7 +193,7 @@ void handle_send_submission(int client_fd, const char *buffer, size_t size) {
   logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
   ctx->op_type = uring_op_type_send;
   ctx->send.client_fd = client_fd;
-  ctx->send.buffer = buffer;
+  ctx->send.buffer = buffer; // NOTE: could maybe make this const?
   ctx->send.size = size;
 
   io_uring_prep_send(sqe, ctx->send.client_fd, ctx->send.buffer, ctx->send.size,
@@ -279,7 +278,7 @@ void handle_statx_completion(struct io_uring_cqe *cqe,
     return;
   }
 
-  ctx->pt_state.self(ctx->pt_state);
+  ctx->pt_state->self(ctx->pt_state);
 }
 
 void async_io_process() {
@@ -322,23 +321,24 @@ void async_io_open_file(open_file_ctx *of_ctx) {
     return;
   }
 
-  PT_BEGIN(of_ctx->state, async_io_open_file);
+  PT_BEGIN(&of_ctx->state, async_io_open_file); // NOTE: Figure this out, RESUME
 
   // Fill out syncronous parts
   of_ctx = cmem_alloc(sizeof(FILE));
-  string *path_shards = str_split_at_lit(path, "/");
-  of_ctx->file->name = str_dup(path_shards[darray_get_length(path_shards) - 1]);
+  string *path_shards = str_split_at_lit(of_ctx->path, "/");
+  of_ctx->file->name =
+      str_dup(path_shards[*darray_get_length(path_shards) - 1]);
   darray_destroy_string_helper(path_shards);
 
-  PT_WAIT(of_ctx->state, handle_openat_submission(
-                             of_ctx->path, &of_ctx->file->fd, of_ctx->state));
-  PT_WAIT(of_ctx->state,
-          handle_statx_submission(*of_ctx->file->fd, &of_ctx->file->statx_buff,
-                                  of_ctx->state));
+  PT_WAIT(&of_ctx->state, handle_openat_submission(
+                              of_ctx->path, &of_ctx->file->fd, &of_ctx->state));
+  PT_WAIT(&of_ctx->state,
+          handle_statx_submission(of_ctx->file->fd, &of_ctx->file->statx_buff,
+                                  &of_ctx->state));
 
   // Add to cache
 
-  PT_END(of_ctx->state);
+  PT_END(&of_ctx->state);
 }
 
 void async_io_send_buffer(string str) {}

@@ -5,6 +5,7 @@ A high performance webserver made for linux first, should eventually also be abl
 ## TODO
 
 - finish io_uring state machine
+- create a darray_foreach
 - create the filemap hashmap
 - use GnuTLS for the SSL handshake
 - Uploading/Downloading Files
