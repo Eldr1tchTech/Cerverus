@@ -56,13 +56,13 @@ typedef struct route_segment {
 typedef struct route {
   route_segment *segments;
   http_method method;
-  async_resume_fn callback;
+  pt_fn callback;
 } route;
 
 typedef struct trie_node {
   struct trie_node *children;
   route_segment segment;
-  async_resume_fn callback;
+  pt_fn callback;
 } trie_node;
 
 typedef struct trie {

@@ -24,15 +24,18 @@ typedef struct test_locals {
   response *res;
 } test_locals;
 
-void route_callback_test(void *ctx) {
+void route_callback_test(protothread_state *state) {
   // Just offset calculations, so very cheap
-  protothread_state *state = ctx;
-  test_locals *locals = ((logical_async_context *)ctx)->local;
+  test_locals *locals = ((logical_async_context *)state)->local;
 
   PT_BEGIN(state, route_callback_test);
   locals = cmem_alloc(sizeof(test_locals));
 
-  PT_WAIT(state, async_io_open_file("assets/public/test.html", &locals->file));
+  open_file_ctx *of_ctx = cmem_alloc(sizeof(open_file_ctx));
+  of_ctx->path = str_create_lit("assets/public/test.html");
+  of_ctx->file = &locals->file;
+  of_ctx->caller_ctx = state;
+  PT_WAIT(state, async_io_open_file(of_ctx));
 
   // Setup status line
   locals->res->status_line.version = http_version_1p1;
@@ -60,7 +63,7 @@ void route_callback_test(void *ctx) {
   // Date
 
   // Send headers
-  string raw_res = response_serialize(locals->res);
+  string raw_res = response_serialize(locals->res); // persistent across await
   PT_WAIT(state, async_io_send_buffer(raw_res));
   str_destroy(raw_res);
 

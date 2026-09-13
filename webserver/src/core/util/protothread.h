@@ -2,9 +2,13 @@
 
 // Protothreads via computed goto (GNU/Clang extension: `&&label`, `goto *ptr`).
 
+typedef void (*pt_fn)(struct protothread_state *state);
+
 typedef struct protothread_state {
   void *resume_label;
-  void (*self)(void *frame);
+  pt_fn self;
+
+  struct protothread_state *caller;
 } protothread_state;
 
 // Aliasing
