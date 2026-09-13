@@ -9,6 +9,8 @@ typedef struct protothread_state {
   pt_fn self;
 
   struct protothread_state *caller;
+
+  void *locals;
 } protothread_state;
 
 // Aliasing

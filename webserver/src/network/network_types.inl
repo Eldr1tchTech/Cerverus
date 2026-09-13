@@ -1,7 +1,7 @@
 #pragma once
 
-#include "IO/async_io.h"
 #include "core/containers/string.h"
+#include "core/util/protothread.h"
 
 #define MAX_HEADER_COUNT 32
 
@@ -68,3 +68,8 @@ typedef struct trie_node {
 typedef struct trie {
   trie_node **roots;
 } trie;
+
+typedef struct minimal_locals {
+  int client_fd;
+  request *req;
+} minimal_locals;

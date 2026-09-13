@@ -47,10 +47,9 @@ string response_serialize(response *res) {
           str_get_len(res->status_line.reason_phrase) + 2;
 
   // HEADERS
-  header *headers_darr_data = res->headers->data;
-  for (size_t i = 0; i < res->headers->length; i++) {
-    size += str_get_len(headers_darr_data->name) + 2 +
-            str_get_len(headers_darr_data->value) + 2;
+  for (size_t i = 0; i < *darray_get_length(res->headers); i++) {
+    size += str_get_len(res->headers[i].name) + 2 +
+            str_get_len(res->headers[i].value) + 2;
   }
 
   size += 2;
@@ -72,10 +71,10 @@ string response_serialize(response *res) {
   str_cat_str_lit(raw_res, "\r\n");
 
   // HEADERS
-  for (size_t i = 0; i < res->headers->length; i++) {
-    str_cat_str(raw_res, headers_darr_data[i].name);
+  for (size_t i = 0; i < *darray_get_length(res->headers); i++) {
+    str_cat_str(raw_res, res->headers[i].name);
     str_cat_str_lit(raw_res, ": ");
-    str_cat_str(raw_res, headers_darr_data[i].value);
+    str_cat_str(raw_res, res->headers[i].value);
     str_cat_str_lit(raw_res, "\r\n");
   }
 
@@ -87,9 +86,9 @@ string response_serialize(response *res) {
 
   // Destroy response
   str_destroy(res->status_line.reason_phrase);
-  for (size_t i = 0; i < res->headers->length; i++) {
-    str_destroy(headers_darr_data[i].name);
-    str_destroy(headers_darr_data[i].value);
+  for (size_t i = 0; i < *darray_get_length(res->headers); i++) {
+    str_destroy(res->headers[i].name);
+    str_destroy(res->headers[i].value);
   }
 
   return raw_res;

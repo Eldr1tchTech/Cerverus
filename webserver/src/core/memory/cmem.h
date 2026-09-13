@@ -4,6 +4,8 @@
 
 void *cmem_alloc(size_t size);
 
+void *cmem_realloc(void *block, size_t size);
+
 void cmem_free(void *block);
 
 void cmem_zmem(void *block, size_t size);

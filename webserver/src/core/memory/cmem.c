@@ -3,11 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-void *cmem_alloc(size_t size) {
-  void *block = malloc(size);
-  cmem_zmem(block, size);
-  return block;
-}
+void *cmem_alloc(size_t size) { return malloc(size); }
+
+void *cmem_realloc(void *block, size_t size) { return realloc(block, size); }
 
 void cmem_free(void *block) { free(block); }
 

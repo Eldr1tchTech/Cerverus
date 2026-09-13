@@ -18,18 +18,18 @@
 // TODO: create logical_test_locals? or some way for the server to pass the
 // appropriate information on to the handler
 typedef struct test_locals {
-  request *req;
   int client_fd;
+  request *req;
   FILE file;
   response *res;
 } test_locals;
 
 void route_callback_test(protothread_state *state) {
   // Just offset calculations, so very cheap
-  test_locals *locals = ((logical_async_context *)state)->local;
+  test_locals *locals = (test_locals *)state->locals;
 
   PT_BEGIN(state, route_callback_test);
-  locals = cmem_alloc(sizeof(test_locals));
+  locals = cmem_realloc(state->locals, sizeof(test_locals));
 
   open_file_ctx *of_ctx = cmem_alloc(sizeof(open_file_ctx));
   of_ctx->path = str_create_lit("assets/public/test.html");

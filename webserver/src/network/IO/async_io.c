@@ -5,7 +5,6 @@
 #include "core/util/logger.h"
 #include "core/util/profiler.h"
 #include "network/http/request.h"
-#include "network/http/response.h"
 
 #include <arpa/inet.h>
 #include <fcntl.h>

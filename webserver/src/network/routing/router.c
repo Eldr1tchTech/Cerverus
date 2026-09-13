@@ -49,12 +49,17 @@ void router_handle_request(router *rtr, request *request, int client_fd) {
 
   // 2. Check against dynamic registered routes
   if (rtr && rtr->routing_table) {
-    async_resume_fn handler =
+    pt_fn handler =
         trie_find_handler(rtr->routing_table, request->request_line.method,
                           request->request_line.URI);
 
+    protothread_state *state = cmem_alloc(sizeof(protothread_state));
+    state->locals = cmem_alloc(sizeof(minimal_locals));
+    ((minimal_locals *)(state->locals))->client_fd = client_fd;
+    ((minimal_locals *)(state->locals))->req = request;
+
     if (handler) {
-      (*handler)(request, client_fd);
+      (*handler)(state);
       return;
     }
   }
