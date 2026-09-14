@@ -9,8 +9,8 @@ typedef struct router_config {
 } router_config;
 
 typedef struct router {
-  trie *routing_table;
   router_config conf;
+  trie *routing_table;
 } router;
 
 router *router_create(router_config *rtr_conf);

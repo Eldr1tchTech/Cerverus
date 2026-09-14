@@ -2,6 +2,9 @@
 
 A high performance webserver made for linux first, should eventually also be able to be used for other types of servers such as game servers. Should also include an test-suite for testing servers. The server will be based around htmx, with it's own templating engine.
 
+## LEFTOFF
+Refactoring router_handle_request to work with async now, finish that up.
+
 ## TODO
 
 - finish io_uring state machine

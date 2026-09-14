@@ -40,4 +40,9 @@ typedef struct protothread_state {
   PT_LABEL_NAME:;                                                              \
   } while (0)
 
-#define PT_END(pt_ptr) ((pt_ptr)->resume_label = nullptr)
+#define PT_END(pt_ptr)                                                         \
+  (pt_ptr)->resume_label = nullptr;                                            \
+  if ((pt_ptr)->caller != nullptr) {                                           \
+    (pt_ptr)->caller->self((pt_ptr)->caller);                                  \
+  }                                                                            \
+  \
