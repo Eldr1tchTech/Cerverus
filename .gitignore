@@ -1,3 +1,6 @@
 build/
+bin/
 compile_commands.json
 vgcore.*
+.cache
+CMakePresets.json

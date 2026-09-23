@@ -3,11 +3,12 @@
     "configurations": [
         {
             "name": "(Linux) Launch",
-            "type": "cppdbg",
+            "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/project",
+            "program": "${workspaceFolder}/bin/project",
             "args": [],
-            "cwd": "${workspaceFolder}/build/",
+            "cwd": "${workspaceFolder}/bin/",
+            "preLaunchTask": "Build Everything"
         }
     ]
 }
