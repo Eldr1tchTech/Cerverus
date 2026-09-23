@@ -3,6 +3,7 @@
 // Router will have a static map of all file paths
 // Also the add_route and find_handler methods
 
+#include "core/containers/hashmap.h"
 #include "network/network_types.inl"
 
 typedef struct router_config {
@@ -11,6 +12,7 @@ typedef struct router_config {
 typedef struct router {
   router_config conf;
   trie *routing_table;
+  hashmap *public_directory_hmap;
 } router;
 
 router *router_create(router_config *rtr_conf);

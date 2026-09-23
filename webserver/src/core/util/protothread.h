@@ -44,5 +44,4 @@ typedef struct protothread_state {
   (pt_ptr)->resume_label = nullptr;                                            \
   if ((pt_ptr)->caller != nullptr) {                                           \
     (pt_ptr)->caller->self((pt_ptr)->caller);                                  \
-  }                                                                            \
-  \
+  }
