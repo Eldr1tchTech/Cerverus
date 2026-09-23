@@ -4,12 +4,7 @@
         {
             "type": "shell",
             "label": "Build Everything",
-            "windows": {
-                "command": "${workspaceFolder}/build-all.bat"
-            },
-            "linux": {
-                "command": "${workspaceFolder}/build-all.sh"
-            },
+            "command": "cmake --build ${workspaceFolder}/build",
             "options": {
                 "cwd": "${workspaceFolder}"
             },
@@ -20,22 +15,6 @@
                 "kind": "build",
                 "isDefault": true
             }
-        },
-        {
-            "type": "shell",
-            "label": "Build Tests",
-            "windows": {
-                "command": "${workspaceFolder}/build-tests.bat"
-            },
-            "linux": {
-                "command": "${workspaceFolder}/build-tests.sh"
-            },
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "problemMatcher": [
-                "$gcc"
-            ],
-        },
+        }
     ]
 }
