@@ -91,6 +91,10 @@ void server_run(server *srv) {
       "Server listening on port %i.\n\tVisit: http://localhost:%i/index.html",
       srv->conf->port, srv->conf->port);
 
+  for (size_t i = 0; i < 8; i++) {
+    handle_accept_submission();
+  }
+
   while (true) {
     async_io_process();
   }
