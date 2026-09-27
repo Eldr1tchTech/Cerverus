@@ -59,6 +59,7 @@ void route_callback_send_file(protothread_state *state) {
   locals->res = response_create();
 
   protothread_state *open_file_state = cmem_alloc(sizeof(protothread_state));
+  open_file_state->resume_label = nullptr;
   open_file_state->locals = cmem_alloc(sizeof(open_file_locals));
   ((open_file_locals *)open_file_state->locals)->path = locals->path;
   ((open_file_locals *)open_file_state->locals)->file = &locals->file;
@@ -140,6 +141,7 @@ void route_callback_send_404(protothread_state *state) {
 
 void prep_route_callback_send_404(int client_fd) {
   protothread_state *state = cmem_alloc(sizeof(protothread_state));
+  state->resume_label = nullptr;
   send_404_locals *locals = cmem_alloc(sizeof(send_404_locals));
 
   state->locals = locals;
@@ -150,6 +152,7 @@ void prep_route_callback_send_404(int client_fd) {
 
 void prep_route_callback_send_file(int client_fd, string path) {
   protothread_state *state = cmem_alloc(sizeof(protothread_state));
+  state->resume_label = nullptr;
   send_file_locals *locals = cmem_alloc(sizeof(send_file_locals));
 
   state->locals = locals;
@@ -188,6 +191,7 @@ void router_handle_request(router *rtr, request *request, int client_fd) {
                           request->request_line.URI);
 
     protothread_state *state = cmem_alloc(sizeof(protothread_state));
+    state->resume_label = nullptr;
     state->locals = cmem_alloc(sizeof(minimal_locals));
     ((minimal_locals *)(state->locals))->client_fd = client_fd;
     ((minimal_locals *)(state->locals))->req = request;

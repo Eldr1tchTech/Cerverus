@@ -34,6 +34,7 @@ void route_callback_test(protothread_state *state) {
   locals->res = response_create();
 
   protothread_state *open_file_state = cmem_alloc(sizeof(protothread_state));
+  open_file_state->resume_label = nullptr;
   open_file_state->locals = cmem_alloc(sizeof(open_file_locals));
   ((open_file_locals *)open_file_state->locals)->path =
       str_create_lit("assets/public/test.html");
