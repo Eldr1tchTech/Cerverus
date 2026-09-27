@@ -1,5 +1,6 @@
 #include "router.h"
 
+#include "core/containers/string.h"
 #include "core/memory/cmem.h"
 #include "core/util/util.h"
 #include "network/http/response.h"
@@ -43,6 +44,7 @@ typedef struct send_file_locals {
   string path;
   FILE file;
   response *res;
+  string raw_res;
 } send_file_locals;
 
 void route_callback_send_file(protothread_state *state) {
@@ -51,6 +53,7 @@ void route_callback_send_file(protothread_state *state) {
 
   PT_BEGIN(state, route_callback_send_file);
   locals = cmem_realloc(locals, sizeof(send_file_locals));
+  locals->res = response_create();
 
   protothread_state *open_file_state = cmem_alloc(sizeof(protothread_state));
   open_file_state->locals = cmem_alloc(sizeof(open_file_locals));
@@ -62,7 +65,7 @@ void route_callback_send_file(protothread_state *state) {
   // Setup status line
   locals->res->status_line.version = http_version_1p1;
   locals->res->status_line.status_code = 200;
-  locals->res->status_line.reason_phrase = "OK";
+  locals->res->status_line.reason_phrase = str_create_lit("OK");
 
   // Setup headers
 
@@ -85,9 +88,9 @@ void route_callback_send_file(protothread_state *state) {
   // Date
 
   // Send headers
-  string raw_res = response_serialize(locals->res); // persistent across await
-  PT_WAIT(state, async_io_send_buffer(raw_res));
-  str_destroy(raw_res);
+  locals->raw_res = response_serialize(locals->res);
+  PT_WAIT(state, async_io_send_buffer(locals->raw_res));
+  str_destroy(locals->raw_res);
 
   // Send file
   PT_WAIT(state, async_io_sendfile(locals->file.fd));
@@ -97,6 +100,49 @@ void route_callback_send_file(protothread_state *state) {
   // NOTE: destroy ctx?
 
   PT_END(state);
+}
+
+typedef struct send_404_locals {
+  int client_fd;
+  response *res;
+  string raw_res;
+} send_404_locals;
+
+void route_callback_send_404(protothread_state *state) {
+  // Just offset calculations, so very cheap
+  send_404_locals *locals = (send_404_locals *)state->locals;
+
+  PT_BEGIN(state, route_callback_send_404);
+  locals->res = response_create();
+
+  // Setup status line
+  locals->res->status_line.version = http_version_1p1;
+  locals->res->status_line.status_code = 404;
+  locals->res->status_line.reason_phrase = str_create_lit("Not Found");
+
+  // Setup headers
+  // Date
+
+  // Send headers
+  locals->raw_res = response_serialize(locals->res); // persistent across await
+  PT_WAIT(state, async_io_send_buffer(locals->raw_res));
+  str_destroy(locals->raw_res);
+
+  // Cleanup
+  cmem_free(locals);
+  // NOTE: destroy ctx?
+
+  PT_END(state);
+}
+
+void prep_route_callback_send_404(int client_fd) {
+  protothread_state *state = cmem_alloc(sizeof(protothread_state));
+  send_404_locals *locals = cmem_alloc(sizeof(send_404_locals));
+
+  state->locals = locals;
+  locals->client_fd = client_fd;
+
+  route_callback_send_404(state);
 }
 
 void prep_route_callback_send_file(int client_fd, string path) {
@@ -150,8 +196,4 @@ void router_handle_request(router *rtr, request *request, int client_fd) {
   }
 
   // 3. Send 404 if you have made it to this point
-  int file_fd = open("assets/404.html", O_RDONLY);
-  if (file_fd != -1) {
-    route_callback_send_file(nullptr);
-  }
 }

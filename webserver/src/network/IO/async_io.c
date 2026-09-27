@@ -153,9 +153,8 @@ void handle_recv_completion(struct io_uring_cqe *cqe,
       return;
     } else {
       ctx->recv.offset += bytes_read;
-      cmem_mcpy(ctx->recv.buffer,
-                ctx->recv.buffer + ctx->recv.offset + bytes_read,
-                BUFFER_SIZE - (ctx->recv.offset + bytes_read));
+      cmem_mcpy(ctx->recv.buffer, ctx->recv.buffer + ctx->recv.offset,
+                BUFFER_SIZE - (ctx->recv.offset));
       ctx->recv.offset -= parse_result;
       router_handle_request(state.rtr, &ctx->recv.request, ctx->recv.client_fd);
     }
@@ -260,7 +259,7 @@ void handle_close_completion(struct io_uring_cqe *cqe,
 
 void handle_statx_submission(int fd, struct statx *statx_buff,
                              protothread_state *pt_state) {
-  struct io_uring_sqe *sqe = io_uring_get_sqe(&state.ring);
+  struct io_uring_sqe *sqe = io_uring_get_sqe_wrapper();
 
   logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
   ctx->op_type = uring_op_type_statx;
@@ -306,9 +305,12 @@ void async_io_process() {
       break;
     case uring_op_type_close:
       handle_close_completion(cqe, ctx);
+      break;
     case uring_op_type_statx:
       handle_statx_completion(cqe, ctx);
+      break;
     default:
+      LOG_ERROR("async_io_process - Unknown uring_op_type.");
       break;
     }
 

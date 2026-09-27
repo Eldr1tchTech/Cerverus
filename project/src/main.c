@@ -1,3 +1,4 @@
+#include "core/containers/string.h"
 #include "core/util/protothread.h"
 #include "network/IO/async_io.h"
 #include "network/network_util.h"
@@ -30,6 +31,7 @@ void route_callback_test(protothread_state *state) {
 
   PT_BEGIN(state, route_callback_test);
   locals = cmem_realloc(state->locals, sizeof(test_locals));
+  locals->res = response_create();
 
   protothread_state *open_file_state = cmem_alloc(sizeof(protothread_state));
   open_file_state->locals = cmem_alloc(sizeof(open_file_locals));
@@ -42,7 +44,7 @@ void route_callback_test(protothread_state *state) {
   // Setup status line
   locals->res->status_line.version = http_version_1p1;
   locals->res->status_line.status_code = 200;
-  locals->res->status_line.reason_phrase = "OK";
+  locals->res->status_line.reason_phrase = str_create_lit("OK");
 
   // Setup headers
 
