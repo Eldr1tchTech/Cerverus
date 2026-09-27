@@ -36,7 +36,7 @@ size_t str_get_u64_len(u64 n);
 // Creating/Allocating?
 string _str_create_len(const cstr str, size_t len);
 string str_create(const cstr str);
-string str_create_lit(str_lit lit);
+#define str_create_lit(lit) _str_create_len(lit, STR_LIT_LEN(lit))
 string str_dup(string str);
 string str_empty();
 string str_grow_to(string str, size_t val);

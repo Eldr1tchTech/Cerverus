@@ -30,7 +30,7 @@ hashmap *hashmap_create(size_t size, double load, size_t stride, hash_fn hash) {
   new_hmap->size = size / load;
   new_hmap->stride = stride;
   new_hmap->hash = hash ? hash : hash_fnv1a;
-  size_t temp_size = (sizeof(hashmap_entry) + stride) * size;
+  size_t temp_size = (sizeof(hashmap_entry) + stride) * new_hmap->size;
   new_hmap->entries = cmem_alloc(temp_size);
   cmem_zmem(new_hmap->entries, temp_size);
 

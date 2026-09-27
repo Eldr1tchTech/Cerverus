@@ -81,10 +81,6 @@ string _str_create_len(const cstr str, size_t length) {
 
 string str_create(char *str) { return _str_create_len(str, raw_str_len(str)); }
 
-string str_create_lit(str_lit lit) {
-  return _str_create_len(lit, STR_LIT_LEN(lit));
-}
-
 string str_dup(string str) { return _str_create_len(str, str_get_len(str)); }
 
 string str_empty() {
@@ -105,7 +101,9 @@ string str_grow_to(string str, size_t value) {
     return str; // already big enough, no-op
   }
 
-  string_header *new_header = cmem_alloc(sizeof(string_header) + value + 1);
+  size_t temp_size = sizeof(string_header) + value + 1;
+  string_header *new_header = cmem_alloc(temp_size);
+  cmem_zmem(new_header, temp_size);
 
   new_header->length = header->length;
   new_header->capactiy = value;
@@ -283,8 +281,9 @@ void _str_cat_str_size(char *str1, char *str2, size_t len2) {
 }
 
 string str_cat_str(string str1, string str2) {
-  if (str_get_capacity(str1) > str_get_len(str1) + str_get_len(str2)) {
-    _str_cat_str_size(str1, str2, str_get_len(str2));
+  size_t len2 = str_get_len(str2);
+  if (str_get_capacity(str1) > str_get_len(str1) + len2) {
+    _str_cat_str_size(str1, str2, len2);
 
     return str1;
   }

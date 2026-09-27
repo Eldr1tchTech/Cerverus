@@ -5,6 +5,9 @@ set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)   # clangd's compile_commands.json, always fresh
 
+# Enable AddressSanitizer option (default: ON)
+option(ENABLE_ASAN "Enable AddressSanitizer for debugging" ON)
+
 # Go over these these and learn what exactly they all do.
 # Flags from the old .mak files
 add_compile_options(-g)
