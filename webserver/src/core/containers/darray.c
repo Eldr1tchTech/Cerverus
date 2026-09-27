@@ -11,11 +11,13 @@ typedef struct darray_header {
 } darray_header;
 
 darray_header *header_from_darray(darray darr) {
-  return (darray_header *)darr - sizeof(darray_header);
+  return (darray_header *)((char *)darr - sizeof(darray_header));
 }
 
 darray darray_create(size_t size, size_t stride) {
-  darray_header *darr_h = cmem_alloc(sizeof(darray_header) + stride * size);
+  size_t temp_size = sizeof(darray_header) + stride * size;
+  darray_header *darr_h = cmem_alloc(temp_size);
+  cmem_zmem(darr_h, temp_size);
   darr_h->size = size;
   darr_h->length = 0;
   darr_h->stride = stride;
@@ -23,7 +25,7 @@ darray darray_create(size_t size, size_t stride) {
   return darr_h->data;
 }
 
-void darray_destroy(darray darr) { cmem_free(darr); }
+void darray_destroy(darray darr) { cmem_free(header_from_darray(darr)); }
 
 darray darray_resize(darray darr, size_t new_size) {
   darray temp_darr = darray_create(new_size, *darray_get_stride(darr));

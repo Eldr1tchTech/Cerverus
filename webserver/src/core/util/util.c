@@ -27,7 +27,7 @@ void recursive_walk(DIR *dir, const string prefix, darray files_darr) {
           str_cat_str(new_entry, temp_str); // Will I need to rework this as it
                                             // could have to reallocate?
       str_destroy(temp_str);
-      darray_add(files_darr, new_entry);
+      darray_add(files_darr, &new_entry);
     } else if (entry->d_type == DT_DIR) {
       int fd = openat(dirfd(dir), entry->d_name, O_RDONLY | O_DIRECTORY);
       DIR *sub_dir = fdopendir(fd);

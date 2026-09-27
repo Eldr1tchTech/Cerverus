@@ -67,7 +67,9 @@ size_t string_get_i32_length(i32 n) {
 }
 
 string _str_create_len(const cstr str, size_t length) {
-  string_header *header = cmem_alloc(sizeof(string_header) + length + 1);
+  size_t temp_size = sizeof(string_header) + length + 1;
+  string_header *header = cmem_alloc(temp_size);
+  cmem_zmem(header, temp_size);
 
   header->length = length;
   header->capactiy = length;

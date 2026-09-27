@@ -4,7 +4,7 @@
 #include "core/util/util.h"
 #include "network/network_util.h"
 
-route *route_create(http_method method, char *URI, pt_fn callback) {
+route *route_create(http_method method, string URI, pt_fn callback) {
   route *new_route = cmem_alloc(sizeof(route));
 
   string *str_darr = parse_URI(URI);

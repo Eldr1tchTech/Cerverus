@@ -88,7 +88,8 @@ int main() {
   router_config rtr_conf = {};
   router *rtr = router_create(&rtr_conf);
 
-  route *rt_test = route_create(http_method_get, "/test", route_callback_test);
+  string temp_str = str_create_lit("/test");
+  route *rt_test = route_create(http_method_get, temp_str, route_callback_test);
 
   router_add_route(rtr, rt_test);
 

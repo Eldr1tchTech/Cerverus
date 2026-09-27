@@ -3,13 +3,15 @@
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
 #include "string.h"
+#include <stddef.h>
 
 size_t hash_fnv1a(string key) {
   size_t hash = 14695981039346656037ULL;
-  while (*key) {
-    hash ^= (unsigned char)*key++;
+  for (size_t i = 0; i < str_get_len(key); i++) {
+    hash ^= (unsigned char)(key[i]);
     hash *= 1099511628211ULL;
   }
+
   return hash;
 }
 
@@ -20,6 +22,7 @@ hashmap_entry *hashmap_get_entry(hashmap *hmap, size_t index) {
 
 hashmap *hashmap_create(size_t size, double load, size_t stride, hash_fn hash) {
   hashmap *new_hmap = cmem_alloc(sizeof(hashmap));
+  cmem_zmem(new_hmap, sizeof(hashmap));
 
   if (load <= 0 || load > 1)
     LOG_DEBUG("hashmap_create - load should be between 0.0 and 1.0. load: %d",
@@ -27,7 +30,9 @@ hashmap *hashmap_create(size_t size, double load, size_t stride, hash_fn hash) {
   new_hmap->size = size / load;
   new_hmap->stride = stride;
   new_hmap->hash = hash ? hash : hash_fnv1a;
-  new_hmap->entries = cmem_alloc((sizeof(hashmap_entry) + stride) * size);
+  size_t temp_size = (sizeof(hashmap_entry) + stride) * size;
+  new_hmap->entries = cmem_alloc(temp_size);
+  cmem_zmem(new_hmap->entries, temp_size);
 
   return new_hmap;
 }
@@ -107,7 +112,7 @@ bool hashmap_delete(hashmap *hmap, const string key) {
     hashmap_entry *curr_entry =
         hashmap_get_entry(hmap, (start + i) % hmap->size);
     if (curr_entry->exists || curr_entry->is_tombstone) {
-      if (curr_entry->exists && str_equal(curr_entry->key, key) == 0) {
+      if (curr_entry->exists && str_equal(curr_entry->key, key)) {
         cmem_zmem(curr_entry, sizeof(hashmap_entry) + hmap->stride);
         curr_entry->is_tombstone = true;
         return true;

@@ -3,6 +3,7 @@
 #include "core/containers/darray.h"
 #include "core/containers/string.h"
 #include "core/memory/cmem.h"
+#include "core/util/logger.h"
 #include "core/util/util.h"
 #include "network/http/response.h"
 #include "network/network_util.h"
@@ -22,6 +23,7 @@ router *router_create(router_config *rtr_conf) {
       hashmap_create(*darray_get_length(public_files_darr), 0.67, 0, nullptr);
 
   for (size_t i = 0; i < *darray_get_length(public_files_darr); i++) {
+    LOG_INFO("find out of bounds read: %s", public_files_darr[i]);
     hashmap_set(rtr->public_directory_hmap, public_files_darr[i], nullptr);
   }
 
