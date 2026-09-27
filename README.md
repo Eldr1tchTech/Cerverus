@@ -3,7 +3,7 @@
 A high performance webserver made for linux first, should eventually also be able to be used for other types of servers such as game servers. Should also include an test-suite for testing servers. The server will be based around htmx, with it's own templating engine.
 
 ## LEFTOFF
-Finish writing the recursive directory walk/list function.
+Fully trace a request/protothread state. Somewhere it is hanging and causing a crash somehow.
 
 ## TODO
 
