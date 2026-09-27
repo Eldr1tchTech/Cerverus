@@ -1,5 +1,6 @@
 #include "router.h"
 
+#include "core/containers/darray.h"
 #include "core/containers/string.h"
 #include "core/memory/cmem.h"
 #include "core/util/util.h"
@@ -15,7 +16,7 @@ router *router_create(router_config *rtr_conf) {
 
   // NOTE: Eventually allow for this to be regenerated more dynamically.
   // for now just generate once (synchronously at runtime)
-  string *public_files_darr = fs_list_files("assets/public", -1);
+  string *public_files_darr = _list_files("assets/public");
 
   rtr->public_directory_hmap =
       hashmap_create(*darray_get_length(public_files_darr), 0.67, 0, nullptr);
@@ -24,7 +25,7 @@ router *router_create(router_config *rtr_conf) {
     hashmap_set(rtr->public_directory_hmap, public_files_darr[i], nullptr);
   }
 
-  darray_destroy_string_helper(public_files_darr);
+  darray_destroy(public_files_darr);
 
   return rtr;
 }

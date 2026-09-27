@@ -100,7 +100,7 @@ void _str_cat_str_size(string str1, const cstr str2, size_t len2);
  * @return bool If str1 capacity is overflowed, false is returned with no
  * changes made, otherwise true is returned.
  */
-bool str_cat_str(string str1, string str2);
+string str_cat_str(string str1, string str2);
 #define str_cat_str_lit(str1, lit)                                             \
   _str_cat_str_size(str1, lit, STR_LIT_LEN(lit))
 

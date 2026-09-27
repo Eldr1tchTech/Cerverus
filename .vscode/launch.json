@@ -3,7 +3,7 @@
     "configurations": [
         {
             "name": "(Linux) Launch",
-            "type": "lldb",
+            "type": "lldb-dap",
             "request": "launch",
             "program": "${workspaceFolder}/bin/project",
             "args": [],

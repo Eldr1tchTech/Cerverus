@@ -19,7 +19,7 @@ size_t raw_str_len(const cstr str) {
 
   cstr temp_str = str;
   size_t len = 0;
-  while (*str != '\0') {
+  while (*temp_str != '\0') {
     len++;
     temp_str++;
   }
@@ -66,7 +66,7 @@ size_t string_get_i32_length(i32 n) {
   return length;
 }
 
-string _str_create_len(char *str, size_t length) {
+string _str_create_len(const cstr str, size_t length) {
   string_header *header = cmem_alloc(sizeof(string_header) + length + 1);
 
   header->length = length;
@@ -280,13 +280,15 @@ void _str_cat_str_size(char *str1, char *str2, size_t len2) {
   str1[*len1] = '\0';
 }
 
-bool str_cat_str(string str1, string str2) {
+string str_cat_str(string str1, string str2) {
   if (str_get_capacity(str1) > str_get_len(str1) + str_get_len(str2)) {
     _str_cat_str_size(str1, str2, str_get_len(str2));
 
-    return true;
+    return str1;
   }
-  return false;
+  str1 = str_grow_to(str1, str_get_len(str1) + str_get_len(str2));
+  _str_cat_str_size(str1, str2, str_get_len(str2));
+  return str1;
 }
 
 // WARN: VIBED
