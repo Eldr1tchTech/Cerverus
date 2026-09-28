@@ -3,8 +3,6 @@
 #include "core/containers/string.h"
 #include "core/util/logger.h"
 
-string *parse_URI(string URI) { return str_split_at_lit(URI, "/"); }
-
 str_lit content_type_val_helper(string ext) {
   if (ext) {
 

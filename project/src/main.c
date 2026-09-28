@@ -83,7 +83,7 @@ void route_callback_test(protothread_state *state) {
 }
 
 int main() {
-  async_io_setup(64);
+  async_io_setup();
 
   // Router setup
   router_config rtr_conf = {};
@@ -104,5 +104,6 @@ int main() {
 
   server_run(srv);
 
+  str_destroy(temp_str);
   async_io_shutdown();
 }

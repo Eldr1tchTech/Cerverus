@@ -7,7 +7,7 @@
 route *route_create(http_method method, string URI, pt_fn callback) {
   route *new_route = cmem_alloc(sizeof(route));
 
-  string *str_darr = parse_URI(URI);
+  string *str_darr = str_split_at_lit(URI, "/");
 
   new_route->segments_darr =
       darray_create(*darray_get_length(str_darr), sizeof(route_segment));
@@ -16,7 +16,8 @@ route *route_create(http_method method, string URI, pt_fn callback) {
     route_segment temp_segment = {.path_segment = str_darr[i],
                                   .is_dynamic =
                                       (str_darr[i][0] == ':') ? true : false};
-    darray_add(new_route->segments_darr, &temp_segment);
+    new_route->segments_darr =
+        darray_add(new_route->segments_darr, &temp_segment);
   }
   darray_destroy(str_darr);
 

@@ -204,11 +204,12 @@ string _str_split_size(string str, const cstr delim, size_t delim_len) {
   return token;
 }
 
+// WARN: Magic number used.
 darray _str_split_at_size(string str, const cstr delim, size_t delim_len) {
-  darray string_darr = darray_create(8, sizeof(string *));
-  string new_string;
+  darray string_darr = darray_create(8, sizeof(string));
+  string new_string = {0};
   while ((new_string = _str_split_size(str, delim, delim_len)) != nullptr) {
-    darray_add(string_darr, &new_string);
+    darray_add(string_darr, new_string);
   }
 
   if (darray_get_length(string_darr) != 0) {

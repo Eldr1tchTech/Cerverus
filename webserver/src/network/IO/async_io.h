@@ -64,7 +64,7 @@ typedef struct FILE {
 } FILE;
 
 // NOTE: If not appropriately called, may cause weird crashes.
-void async_io_setup(u64 connections);
+void async_io_setup();
 void async_io_shutdown();
 
 void async_io_update_values(int server_fd, router *rtr);

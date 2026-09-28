@@ -37,9 +37,11 @@ struct io_uring_sqe *io_uring_get_sqe_wrapper() {
 
 void file_eviction_handler(void *fd) { handle_close_submission(*((int *)fd)); }
 
+#define TEMP_CONNECTIONS 16
+
 // TODO: pass uring config
-void async_io_setup(u64 connections) {
-  state.connections = connections;
+void async_io_setup() {
+  state.connections = TEMP_CONNECTIONS;
 
   // uring setup
   struct io_uring_params params;
@@ -89,6 +91,8 @@ void handle_accept_completion(struct io_uring_cqe *cqe,
   if (cqe->res < 0) {
     LOG_ERROR("handle_accept_completion - accept failed: %d", cqe->res);
   } else {
+    // TODO: Remember to somehow reincrement this at the correct point later in
+    // the code.
     state.connections--;
     handle_recv_submission(cqe->res, nullptr);
   }

@@ -19,6 +19,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+// TODO: Maybe it should take a pointer to the server, so taht it can be stack
+// allocated by the calling context
 server *server_create(server_config *s_conf, router *rtr) {
   server *s = cmem_alloc(sizeof(server));
   s->conf = s_conf;
@@ -29,6 +31,7 @@ server *server_create(server_config *s_conf, router *rtr) {
 
 void server_destroy(server *s) { cmem_free(s); }
 
+// TODO: Setup in here should eveutally flow through async_io
 bool server_setup(server *srv) {
 
   // Install SIGPIPE handler to prevent crashes
@@ -84,13 +87,12 @@ void server_run(server *srv) {
     return;
   }
 
-  // TODO: Figure out how accepts will be handles, most likely currently by the
-  // async ctx?
-
   LOG_INFO(
       "Server listening on port %i.\n\tVisit: http://localhost:%i/index.html",
       srv->conf->port, srv->conf->port);
 
+  // TODO: Figure out how accepts will be handles, most likely currently by the
+  // async ctx?
   for (size_t i = 0; i < 8; i++) {
     handle_accept_submission();
   }
