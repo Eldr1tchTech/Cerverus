@@ -73,3 +73,4 @@ Shoutout to the following people who's work has allowed for this project to be p
 - Nir Lichtman
 - Jacob Sorber
 - Tsoding
+- antirez (sds)
