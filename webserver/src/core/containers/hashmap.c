@@ -5,9 +5,9 @@
 #include "string.h"
 #include <stddef.h>
 
-size_t hash_fnv1a(string key) {
+size_t hash_fnv1a(sds key) {
   size_t hash = 14695981039346656037ULL;
-  for (size_t i = 0; i < str_get_len(key); i++) {
+  for (size_t i = 0; i < sdslen(key); i++) {
     hash ^= (unsigned char)(key[i]);
     hash *= 1099511628211ULL;
   }
@@ -41,24 +41,24 @@ void hashmap_destroy(hashmap *hmap) {
   for (size_t i = 0; i < hmap->size; i++) {
     hashmap_entry *curr_entry = hashmap_get_entry(hmap, i);
     if (curr_entry->exists) {
-      str_destroy(curr_entry->key);
+      sdsfree(curr_entry->key);
     }
   }
   cmem_free(hmap->entries);
   cmem_free(hmap);
 }
 
-bool hashmap_set(hashmap *hmap, string key, void *element) {
+bool hashmap_set(hashmap *hmap, sds key, void *element) {
   size_t start = hmap->hash(key) % hmap->size;
   for (size_t i = 0; i < hmap->size; i++) {
     hashmap_entry *curr_entry =
         hashmap_get_entry(hmap, (start + i) % hmap->size);
     if (curr_entry->exists || curr_entry->is_tombstone) {
-      if (curr_entry->exists && str_equal(curr_entry->key, key)) {
+      if (curr_entry->exists && sdscmp(curr_entry->key, key) == 0) {
         cmem_mcpy(curr_entry->data, element, hmap->stride);
         if (curr_entry->key)
-          str_destroy(curr_entry->key);
-        curr_entry->key = str_dup(key);
+          sdsfree(curr_entry->key);
+        curr_entry->key = sdsdup(key);
         curr_entry->exists = true;
         return true;
       }
@@ -66,21 +66,21 @@ bool hashmap_set(hashmap *hmap, string key, void *element) {
     }
     cmem_mcpy(curr_entry->data, element, hmap->stride);
     if (curr_entry->key)
-      str_destroy(curr_entry->key);
-    curr_entry->key = str_dup(key);
+      sdsfree(curr_entry->key);
+    curr_entry->key = sdsdup(key);
     curr_entry->exists = true;
     return true;
   }
   return false;
 }
 
-void *hashmap_get(hashmap *hmap, string key) {
+void *hashmap_get(hashmap *hmap, sds key) {
   size_t start = hmap->hash(key) % hmap->size;
   for (size_t i = 0; i < hmap->size; i++) {
     hashmap_entry *curr_entry =
         hashmap_get_entry(hmap, (start + i) % hmap->size);
     if (curr_entry->exists || curr_entry->is_tombstone) {
-      if (curr_entry->exists && str_equal(curr_entry->key, key)) {
+      if (curr_entry->exists && sdscmp(curr_entry->key, key) == 0) {
         return curr_entry->data;
       }
       continue;
@@ -106,13 +106,13 @@ hashmap *hashmap_rehash(hashmap *hmap) {
   return new_hmap;
 }
 
-bool hashmap_delete(hashmap *hmap, const string key) {
+bool hashmap_delete(hashmap *hmap, const sds key) {
   size_t start = hmap->hash(key) % hmap->size;
   for (size_t i = 0; i < hmap->size; i++) {
     hashmap_entry *curr_entry =
         hashmap_get_entry(hmap, (start + i) % hmap->size);
     if (curr_entry->exists || curr_entry->is_tombstone) {
-      if (curr_entry->exists && str_equal(curr_entry->key, key)) {
+      if (curr_entry->exists && sdscmp(curr_entry->key, key) == 0) {
         cmem_zmem(curr_entry, sizeof(hashmap_entry) + hmap->stride);
         curr_entry->is_tombstone = true;
         return true;

@@ -1,7 +1,7 @@
 #include "router.h"
 
 #include "core/containers/darray.h"
-#include "core/containers/string.h"
+
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
 #include "core/util/util.h"
@@ -177,7 +177,7 @@ void router_handle_request(router *rtr, request *request, int client_fd) {
     if (ext) {
       if (hashmap_get(rtr->public_directory_hmap, request->request_line.URI)) {
         string path = str_create_lit("assets/public");
-        str_cat_str(path, request->request_line.URI);
+        path = str_cat_str(path, request->request_line.URI);
         prep_route_callback_send_file(client_fd, path);
       }
     }

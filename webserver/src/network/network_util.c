@@ -1,6 +1,5 @@
 #include "network_util.h"
 
-#include "core/containers/string.h"
 #include "core/util/logger.h"
 
 str_lit content_type_val_helper(string ext) {

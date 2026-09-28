@@ -27,10 +27,13 @@ darray darray_create(size_t size, size_t stride) {
 
 void darray_destroy(darray darr) { cmem_free(header_from_darray(darr)); }
 
+// TODO: Change to use realloc
 darray darray_resize(darray darr, size_t new_size) {
   darray temp_darr = darray_create(new_size, *darray_get_stride(darr));
   cmem_mcpy(temp_darr, darr,
             *darray_get_stride(darr) * *darray_get_length(darr));
+  *darray_get_length(temp_darr) = *darray_get_length(darr);
+  darray_destroy(darr);
   return temp_darr;
 }
 

@@ -1,12 +1,13 @@
 #include "util.h"
 
 #include "core/containers/darray.h"
-#include "core/containers/string.h"
+
 #include "core/util/logger.h"
 
 #include <dirent.h>
 #include <fcntl.h>
 
+// LEFTOFF:
 void darray_destroy_string_helper(darray darr) {
   string *darr_data = darr;
   for (size_t i = 0; i < *darray_get_length(darr_data); i++) {

@@ -3,7 +3,6 @@
 #include <liburing.h>
 #include <stddef.h>
 
-#include "core/containers/string.h"
 #include "core/util/protothread.h"
 #include "network/network_types.inl"
 #include "network/routing/router.h"

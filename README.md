@@ -3,11 +3,12 @@
 A high performance webserver made for linux first, should eventually also be able to be used for other types of servers such as game servers. Should also include an test-suite for testing servers. The server will be based around htmx, with it's own templating engine.
 
 ## LEFTOFF
-Fully trace a request/protothread state. Somewhere it is hanging and causing a crash somehow.
+See marker: // LEFTOFF:
 
 ## TODO
 
-- create a concatenating fmt string (variadic arguments)
+- finish the refactor to use sds, also do sanity and cleanup passes over hmap and LRU_cache
+- change types and structs to be _t affixed, also transition to uint32_t, etc. there really is no need anymore to be scared of external libraries, stop shooting yourself in the face and just use good code. (the string library still sucks, that's why we use sds)
 - finish io_uring state machine
 - create a darray_foreach
 - use GnuTLS for the SSL handshake

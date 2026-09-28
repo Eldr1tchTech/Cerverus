@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/containers/string.h"
 #include "core/util/protothread.h"
 
 #define MAX_HEADER_COUNT 32

@@ -2,12 +2,13 @@
 
 #include "core/containers/doubly_linked_list.h"
 #include "core/containers/hashmap.h"
-#include "core/containers/string.h"
+
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
+#include "core/vendor/sds.h"
 
 typedef struct dll_entry {
-  string hmap_key;
+  sds hmap_key;
   char data[];
 } dll_entry;
 
@@ -29,13 +30,16 @@ void LRU_cache_destroy(LRU_cache *cache) {
   cmem_free(cache);
 }
 
+// WARN: vibed.
 void *LRU_cache_get(LRU_cache *cache, char *label) {
-  // Check hashmap, hashmap stores pointer to dll, dll cotnains data, move entry
-  // to front
-  doubly_linked_list_node *item = hashmap_get(cache->hmap, label);
-  if (item == nullptr) {
+  // hashmap stores a doubly_linked_list_node* as its value, and hashmap_get
+  // returns a pointer to that stored value, so we get a node** back.
+  doubly_linked_list_node **slot = hashmap_get(cache->hmap, label);
+  if (slot == nullptr) {
     return nullptr;
   }
+
+  doubly_linked_list_node *item = *slot;
   doubly_linked_list_move_to_front(cache->dll, item);
 
   return ((dll_entry *)item->data)->data;
@@ -47,7 +51,7 @@ void LRU_cache_add(LRU_cache *cache, char *label, void *item) {
   }
 
   dll_entry *new_entry = cmem_alloc(sizeof(dll_entry) + cache->stride);
-  new_entry->hmap_key = str_create(label);
+  new_entry->hmap_key = sdsnew(label);
   cmem_mcpy(new_entry->data, item, cache->stride);
 
   doubly_linked_list_node *new_node =
@@ -58,10 +62,11 @@ void LRU_cache_add(LRU_cache *cache, char *label, void *item) {
   if (cache->dll->length > cache->size) {
     dll_entry *evicted_entry = cmem_alloc(sizeof(dll_entry) + cache->stride);
     doubly_linked_list_pop_tail(cache->dll, evicted_entry);
-    cmem_free(evicted_entry->hmap_key);
+    hashmap_delete(cache->hmap, evicted_entry->hmap_key);
+    sdsfree(evicted_entry->hmap_key);
     cache->evic_handler(evicted_entry->data);
     cmem_free(evicted_entry);
   }
 
-  hashmap_set(cache->hmap, label, new_node);
+  hashmap_set(cache->hmap, label, &new_node);
 }

@@ -1,13 +1,13 @@
 #pragma once
 
-#include "core/containers/string.h"
+#include "core/vendor/sds.h"
 #include "defines.h"
 
-typedef size_t (*hash_fn)(string key);
+typedef size_t (*hash_fn)(sds key);
 
 typedef struct hashmap_entry {
   bool exists;
-  string key;
+  sds key;
   bool is_tombstone;
   char data[];
 } hashmap_entry;
@@ -31,6 +31,6 @@ void hashmap_destroy(hashmap *hmap);
  */
 hashmap *hashmap_rehash(hashmap *hmap);
 
-bool hashmap_set(hashmap *hmap, string key, void *element);
-void *hashmap_get(hashmap *hmap, string key);
-bool hashmap_delete(hashmap *hmap, string key);
+bool hashmap_set(hashmap *hmap, sds key, void *element);
+void *hashmap_get(hashmap *hmap, sds key);
+bool hashmap_delete(hashmap *hmap, sds key);

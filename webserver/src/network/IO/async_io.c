@@ -185,7 +185,7 @@ void handle_openat_submission(string path, int *fd,
 void handle_openat_completion(struct io_uring_cqe *cqe,
                               logical_async_context *ctx) {
   if (cqe->res <= 0) {
-    LOG_ERROR("handle_openat_completion - Failed.");
+    LOG_ERROR("handle_openat_completion - Failed. %d", cqe->res);
     return;
   }
 

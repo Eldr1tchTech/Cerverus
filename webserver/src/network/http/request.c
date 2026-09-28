@@ -1,6 +1,5 @@
 #include "request.h"
 
-#include "core/containers/string.h"
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
 
@@ -59,31 +58,42 @@ void parse_request_line(request *req, string raw_req_lin) {
   str_destroy(raw_version);
 }
 
-void parse_headers(request *req, string raw_headers) {
+static bool parse_headers(request *req, string raw_headers) {
   req->headers = darray_create(16, sizeof(header));
+  if (str_get_len(raw_headers) == 0)
+    return true;
 
-  if (str_get_len(raw_headers) == 0) {
-    return;
+  string *lines = str_split_at_lit(raw_headers, "\r\n");
+  if (!lines)
+    return false;
+
+  bool ok = true;
+  for (size_t i = 0; i < *darray_get_length(lines); i++) {
+    if (str_get_len(lines[i]) == 0) { // trailing/blank line, nothing to parse
+      str_destroy(lines[i]);
+      continue;
+    }
+
+    header h = {nullptr, nullptr};
+    if (ok && str_parse_fmt(lines[i], "%s: %s", &h.name, &h.value)) {
+      req->headers = darray_add(req->headers, &h);
+    } else {
+      ok = false;
+      if (h.name)
+        str_destroy(h.name);
+      if (h.value)
+        str_destroy(h.value);
+    }
+    str_destroy(lines[i]);
   }
-
-  string *raw_headers_darr = str_split_at_lit(raw_headers, "\r\n");
-  for (size_t i = 0; i < *darray_get_length(raw_headers_darr); i++) {
-
-    header new_header;
-    str_parse_fmt(raw_headers_darr[i], "%s: %s", &new_header.name,
-                  &new_header.value);
-    req->headers = darray_add(req->headers, &new_header);
-
-    str_destroy(raw_headers_darr[i]);
-  }
-
-  darray_destroy(raw_headers_darr);
+  darray_destroy(lines);
+  return ok;
 }
 
 // TODO: Malformed/Malicious request handling.
 // TODO: Resolve memory leak, destroy raw_req before returning in any path.
 int request_parse(request *req, char *raw_req, size_t req_len) {
-  raw_req = str_create(raw_req);
+  raw_req = _str_create_len(raw_req, req_len);
   int header_terminator = _str_find_lit(raw_req, "\r\n\r\n");
   if (header_terminator == -1) {
     if (req_len >= 1892 - 1) // TODO: revisit this
@@ -112,20 +122,6 @@ int request_parse(request *req, char *raw_req, size_t req_len) {
                         "\r\n"); // HACK: Probably should write some sort of
                                  // more full-featured custom parser for this...
     parse_headers(req, raw_headers);
-    str_destroy(raw_headers); // WARN: unsure as to whether this is
-                              // destroying one of the headers...
-
-    // 0x000055555555b710 "Host: localhost:8080\r\nConnection:
-    // keep-alive\r\nCache-Control: max-age=0\r\nsec-ch-ua:
-    // \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\",
-    // \"Chromium\";v=\"151\"\r\nsec-ch-ua-mobile: ?0\r\nsec-ch-ua-platform:
-    // \"Linux\"\r\nUpgrade-Insecure-Requests: 1\r\nUser-Agent: Mozilla/5.0
-    // (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)
-    // Chrome/151.0.0.0 Safari/537.36\r\nAccept:
-    // text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7\r\nSec-Fetch-Site:
-    // none\r\nSec-Fetch-Mode: navigate\r\nSec-Fetch-User: ?1\r\nSec-Fetch-Dest:
-    // document\r\nAccept-Encoding: gzip, deflate, br, zstd\r\nAccept-Language:
-    // en-US,en;q=0.9"
 
     char *content_length_header_value =
         request_get_header_value(req, "Content-Length");

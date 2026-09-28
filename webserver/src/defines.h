@@ -1,6 +1,8 @@
 #pragma once
 
 typedef unsigned long size_t;
+typedef char *cstr;      // C string
+typedef const char *lit; // string literal
 
 typedef unsigned char u8;
 typedef unsigned short u16;
