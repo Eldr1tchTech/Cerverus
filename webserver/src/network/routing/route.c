@@ -2,7 +2,6 @@
 
 #include "core/memory/cmem.h"
 #include "core/util/util.h"
-#include "network/network_util.h"
 
 route *route_create(http_method method, string URI, pt_fn callback) {
   route *new_route = cmem_alloc(sizeof(route));
@@ -12,10 +11,10 @@ route *route_create(http_method method, string URI, pt_fn callback) {
   new_route->segments_darr =
       darray_create(*darray_get_length(str_darr), sizeof(route_segment));
 
+  route_segment temp_segment;
   for (int i = 0; i < *darray_get_length(str_darr); i++) {
-    route_segment temp_segment = {.path_segment = str_darr[i],
-                                  .is_dynamic =
-                                      (str_darr[i][0] == ':') ? true : false};
+    temp_segment.path_segment = str_darr[i];
+    temp_segment.is_dynamic = (str_darr[i][0] == ':') ? true : false;
     new_route->segments_darr =
         darray_add(new_route->segments_darr, &temp_segment);
   }

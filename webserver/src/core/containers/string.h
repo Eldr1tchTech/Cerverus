@@ -25,6 +25,7 @@ typedef char *string;
 
 // Utility
 size_t raw_str_len(const cstr str);
+bool str_is_empty(const cstr str);
 
 // Getters
 size_t str_get_len(string str);
@@ -90,7 +91,7 @@ darray _str_split_at_size(string str, const cstr delim, size_t delim_len);
 bool str_parse_fmt(string str, const cstr format, ...);
 
 // Concatenating
-void _str_cat_str_size(string str1, const cstr str2, size_t len2);
+string _str_cat_str_size(string str1, const cstr str2, size_t len2);
 
 /**
  * @brief Concatenates str2 onto str1.

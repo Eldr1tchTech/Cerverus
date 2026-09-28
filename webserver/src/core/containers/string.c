@@ -26,6 +26,13 @@ size_t raw_str_len(const cstr str) {
   return len;
 }
 
+bool str_is_empty(const cstr str) {
+  if (str[0] == '\0') {
+    return true;
+  }
+  return false;
+}
+
 // TODO: Make these just use negative array indexes? Need to implement some sort
 // of asserts at one point or another
 string_header *string_get_header(string str) {
@@ -196,8 +203,6 @@ string _str_split_size(string str, const cstr delim, size_t delim_len) {
     return nullptr;
   }
 
-  location += delim_len;
-
   string token = _str_create_len(str, location);
   string_remove_head(str, location + delim_len);
 
@@ -208,12 +213,13 @@ string _str_split_size(string str, const cstr delim, size_t delim_len) {
 darray _str_split_at_size(string str, const cstr delim, size_t delim_len) {
   darray string_darr = darray_create(8, sizeof(string));
   string new_string = {0};
-  while ((new_string = _str_split_size(str, delim, delim_len)) != nullptr) {
-    darray_add(string_darr, new_string);
+  while ((new_string = _str_split_size(str, delim, delim_len)) != nullptr &&
+         !str_is_empty(new_string)) {
+    string_darr = darray_add(string_darr, new_string);
   }
 
   if (darray_get_length(string_darr) != 0) {
-    darray_add(string_darr, &str);
+    string_darr = darray_add(string_darr, &str);
     return string_darr;
   } else {
     darray_destroy(string_darr);
@@ -274,11 +280,20 @@ bool str_parse_fmt(string str, const cstr fmt, ...) {
   return true;
 }
 
-void _str_cat_str_size(char *str1, char *str2, size_t len2) {
-  size_t *len1 = &string_get_header(str1)->length;
+string _str_cat_str_size(char *str1, char *str2, size_t len2) {
+  string_header *h1 = string_get_header(str1);
+  size_t *len1 = &h1->length;
+
+  // Check if has capacity
+  if ((h1->capactiy >= *len1 + len2 + 1)) {
+    str1 = str_grow_to(str1, *len1 + len2 + 1);
+    len1 = &string_get_header(str1)->length;
+  }
+
   cmem_mcpy(&str1[*len1], str2, len2);
   *len1 += len2;
   str1[*len1] = '\0';
+  return str1;
 }
 
 string str_cat_str(string str1, string str2) {

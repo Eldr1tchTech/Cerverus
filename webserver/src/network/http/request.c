@@ -62,7 +62,6 @@ void parse_request_line(request *req, string raw_req_lin) {
 void parse_headers(request *req, string raw_headers) {
   req->headers = darray_create(16, sizeof(header));
 
-  *darray_get_length(req->headers) = 0;
   if (str_get_len(raw_headers) == 0) {
     return;
   }
@@ -73,7 +72,7 @@ void parse_headers(request *req, string raw_headers) {
     header new_header;
     str_parse_fmt(raw_headers_darr[i], "%s: %s", &new_header.name,
                   &new_header.value);
-    darray_add(req->headers, &new_header);
+    req->headers = darray_add(req->headers, &new_header);
 
     str_destroy(raw_headers_darr[i]);
   }
@@ -108,9 +107,25 @@ int request_parse(request *req, char *raw_req, size_t req_len) {
 
     // HEADERS
     string raw_headers = str_split_lit(raw_req, "\r\n\r\n");
+    raw_headers =
+        str_cat_str_lit(raw_headers,
+                        "\r\n"); // HACK: Probably should write some sort of
+                                 // more full-featured custom parser for this...
     parse_headers(req, raw_headers);
     str_destroy(raw_headers); // WARN: unsure as to whether this is
                               // destroying one of the headers...
+
+    // 0x000055555555b710 "Host: localhost:8080\r\nConnection:
+    // keep-alive\r\nCache-Control: max-age=0\r\nsec-ch-ua:
+    // \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\",
+    // \"Chromium\";v=\"151\"\r\nsec-ch-ua-mobile: ?0\r\nsec-ch-ua-platform:
+    // \"Linux\"\r\nUpgrade-Insecure-Requests: 1\r\nUser-Agent: Mozilla/5.0
+    // (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)
+    // Chrome/151.0.0.0 Safari/537.36\r\nAccept:
+    // text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7\r\nSec-Fetch-Site:
+    // none\r\nSec-Fetch-Mode: navigate\r\nSec-Fetch-User: ?1\r\nSec-Fetch-Dest:
+    // document\r\nAccept-Encoding: gzip, deflate, br, zstd\r\nAccept-Language:
+    // en-US,en;q=0.9"
 
     char *content_length_header_value =
         request_get_header_value(req, "Content-Length");

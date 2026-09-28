@@ -30,4 +30,6 @@ typedef struct server {
 
 server *server_create(server_config *s_conf, router *rtr);
 
+bool server_setup(server *srv);
+
 void server_run(server *s);

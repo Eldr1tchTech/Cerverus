@@ -82,11 +82,6 @@ bool server_setup(server *srv) {
 }
 
 void server_run(server *srv) {
-
-  if (!server_setup(srv)) {
-    return;
-  }
-
   LOG_INFO(
       "Server listening on port %i.\n\tVisit: http://localhost:%i/index.html",
       srv->conf->port, srv->conf->port);

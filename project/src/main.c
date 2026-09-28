@@ -100,6 +100,8 @@ int main() {
   };
   server *srv = server_create(&srv_conf, rtr);
 
+  server_setup(srv);
+
   async_io_update_values(srv->socket_fd, rtr);
 
   server_run(srv);

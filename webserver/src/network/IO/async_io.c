@@ -136,6 +136,8 @@ void handle_recv_completion(struct io_uring_cqe *cqe,
     return;
   }
 
+  LOG_INFO("RECEIVED REQUEST: \n %s", ctx->recv.buffer);
+
   int parse_result = request_parse(&ctx->recv.request, ctx->recv.buffer,
                                    ctx->recv.offset + bytes_read);
 
