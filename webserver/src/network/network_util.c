@@ -1,10 +1,13 @@
 #include "network_util.h"
 
 #include "core/util/logger.h"
+#include "core/vendor/sds.h"
+#include "defines.h"
 
-str_lit content_type_val_helper(string ext) {
+lit content_type_val_helper(sds ext) {
   if (ext) {
 
+    // TODO: write a helper function for the lit wrapper here
     if (str_equal_lit(ext, "html")) {
       return "text/html";
     } else if (str_equal_lit(ext, "css")) {

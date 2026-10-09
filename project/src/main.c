@@ -1,7 +1,8 @@
 
 #include "core/util/protothread.h"
+#include "core/vendor/sds.h"
+#include "defines.h"
 #include "network/IO/async_io.h"
-#include "network/network_util.h"
 #include <core/memory/cmem.h>
 #include <core/util/logger.h>
 #include <core/util/util.h>
@@ -37,7 +38,7 @@ void route_callback_test(protothread_state *state) {
   open_file_state->resume_label = nullptr;
   open_file_state->locals = cmem_alloc(sizeof(open_file_locals));
   ((open_file_locals *)open_file_state->locals)->path =
-      str_create_lit("assets/public/test.html");
+      sdsnewlit("assets/public/test.html");
   ((open_file_locals *)open_file_state->locals)->file = &locals->file;
   open_file_state->caller = state;
   PT_WAIT(state, async_io_open_file(open_file_state));
@@ -45,32 +46,32 @@ void route_callback_test(protothread_state *state) {
   // Setup status line
   locals->res->status_line.version = http_version_1p1;
   locals->res->status_line.status_code = 200;
-  locals->res->status_line.reason_phrase = str_create_lit("OK");
+  locals->res->status_line.reason_phrase = sdsnewlit("OK");
 
   // Setup headers
 
   // TODO: Make this more user-friendly
   // Content-Type
-  string str_temp = str_dup(locals->file.name);
-  string str_type = str_split_lit(str_temp, ".");
-  header h = {.name = str_create_lit("Content-Type"),
+  sds str_temp = sdsdup(locals->file.name);
+  sds str_type = str_split_lit(str_temp, ".");
+  header h = {.name = sdsnewlit("Content-Type"),
               .value = content_type_val_helper(str_type)};
   response_add_header(locals->res, h);
-  str_destroy(str_type);
-  str_destroy(str_temp);
+  sds_free(str_type);
+  sds_free(str_temp);
 
   // Content-Length
-  h.name = str_create_lit("Content-Length");
-  h.value = str_empty();
+  h.name = sdsnewlit("Content-Length");
+  h.value = sdsempty();
   str_cat_u64(h.value, locals->file.statx_buff.stx_size);
   response_add_header(locals->res, h);
 
   // Date
 
   // Send headers
-  string raw_res = response_serialize(locals->res); // persistent across await
+  sds raw_res = response_serialize(locals->res); // persistent across await
   PT_WAIT(state, async_io_send_buffer(raw_res));
-  str_destroy(raw_res);
+  sds_free(raw_res);
 
   // Send file
   PT_WAIT(state, async_io_sendfile(locals->file.fd));
@@ -89,7 +90,7 @@ int main() {
   router_config rtr_conf = {};
   router *rtr = router_create(&rtr_conf);
 
-  string temp_str = str_create_lit("/test");
+  sds temp_str = sdsnewlit("/test");
   route *rt_test = route_create(http_method_get, temp_str, route_callback_test);
 
   router_add_route(rtr, rt_test);
@@ -106,6 +107,6 @@ int main() {
 
   server_run(srv);
 
-  str_destroy(temp_str);
+  sds_free(temp_str);
   async_io_shutdown();
 }

@@ -1,8 +1,12 @@
 #pragma once
 
+#include "core/vendor/sds.h"
+
 typedef unsigned long size_t;
 typedef char *cstr;      // C string
 typedef const char *lit; // string literal
+
+#define sdsnewlit(lit) sdsnewlen("" lit, (sizeof(lit)) - 1)
 
 typedef unsigned char u8;
 typedef unsigned short u16;

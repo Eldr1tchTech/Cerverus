@@ -2,7 +2,6 @@
 
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
-#include "string.h"
 #include <stddef.h>
 
 size_t hash_fnv1a(sds key) {

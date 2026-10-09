@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/util/protothread.h"
+#include "core/vendor/sds.h"
 
 #define MAX_HEADER_COUNT 32
 
@@ -23,32 +24,32 @@ typedef enum http_version {
 } http_version;
 
 typedef struct header {
-  string name;
-  string value;
+  sds name;
+  sds value;
 } header;
 
 typedef struct request {
   struct {
     http_method method;
-    string URI;
+    sds URI;
     http_version version;
   } request_line;
   header *headers;
-  string body;
+  sds body;
 } request;
 
 typedef struct response {
   struct {
     http_version version;
     int status_code;
-    string reason_phrase;
+    sds reason_phrase;
   } status_line;
   header *headers;
-  string body;
+  sds body;
 } response;
 
 typedef struct route_segment {
-  string path_segment;
+  sds path_segment;
   bool is_dynamic;
 } route_segment;
 

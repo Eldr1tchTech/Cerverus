@@ -57,8 +57,8 @@ typedef struct logical_async_context {
 
 typedef struct FILE {
   int fd;
-  string name;
-  string path;
+  sds name;
+  sds path;
   struct statx statx_buff;
 } FILE;
 
@@ -76,8 +76,7 @@ void handle_recv_submission(int client_fd, recv_context *recv_ctx);
 void handle_recv_completion(struct io_uring_cqe *cqe,
                             logical_async_context *ctx);
 
-void handle_openat_submission(string path, int *fd,
-                              protothread_state *pt_state);
+void handle_openat_submission(sds path, int *fd, protothread_state *pt_state);
 void handle_openat_completion(struct io_uring_cqe *cqe,
                               logical_async_context *ctx);
 
@@ -101,12 +100,12 @@ void handle_close_completion(struct io_uring_cqe *cqe,
 void async_io_process();
 
 typedef struct open_file_locals {
-  string path;
+  sds path;
   FILE *file;
 } open_file_locals;
 
 void async_io_open_file(protothread_state *pt_state);
 
-void async_io_send_buffer(string str);
+void async_io_send_buffer(sds str);
 
 void async_io_sendfile(int fd);

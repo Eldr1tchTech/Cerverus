@@ -5,6 +5,7 @@
 #include "core/util/logger.h"
 #include "core/util/profiler.h"
 #include "core/util/util.h"
+#include "core/vendor/sds.h"
 #include "network/http/request.h"
 
 #include <arpa/inet.h>
@@ -167,8 +168,7 @@ void handle_recv_completion(struct io_uring_cqe *cqe,
   }
 }
 
-void handle_openat_submission(string path, int *fd,
-                              protothread_state *pt_state) {
+void handle_openat_submission(sds path, int *fd, protothread_state *pt_state) {
   struct io_uring_sqe *sqe = io_uring_get_sqe_wrapper();
 
   logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
@@ -339,9 +339,10 @@ void async_io_open_file(protothread_state *pt_state) {
 
   // Fill out synchronous parts
   locals->file = cmem_alloc(sizeof(FILE));
-  string *path_shards = str_split_at_lit(locals->path, "/");
-  locals->file->name =
-      str_dup(path_shards[*darray_get_length(path_shards) - 1]);
+  int count;
+  sds *path_shards = sdssplitlen(locals->path, sdslen(locals->path), "/", 1,
+                                 &count); // TODO: fiinish this
+  locals->file->name = sdsdup(path_shards[*darray_get_length(path_shards) - 1]);
   darray_destroy_string_helper(path_shards);
 
   PT_WAIT(pt_state,
@@ -359,6 +360,6 @@ void async_io_open_file(protothread_state *pt_state) {
   PT_END(pt_state);
 }
 
-void async_io_send_buffer(string str) {}
+void async_io_send_buffer(sds str) {}
 
 void async_io_sendfile(int fd) {}
