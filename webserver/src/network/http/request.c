@@ -1,9 +1,15 @@
 #include "request.h"
 
+#include "core/containers/darray.h"
+#include "core/containers/sv.h"
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
+#include "core/vendor/sds.h"
+#include "defines.h"
+#include "network/network_types.inl"
 
 #include <stddef.h>
+#include <string.h>
 #include <sys/types.h>
 
 #define REQUEST_PARSE_INVALID INT_MIN
@@ -35,8 +41,8 @@ http_method parse_http_method(const string raw_method) {
   return http_method_unknown;
 }
 
-http_version parse_http_version(string raw_version) {
-  if (str_equal_lit(raw_version, "HTTP/1.1")) {
+http_version parse_http_version(sds raw_version) {
+  if (sdseqlit(raw_version, "HTTP/1.1")) {
     return http_version_1p1;
   }
   LOG_DEBUG("parse_http_version - Unable to parse an http_version from the "
@@ -45,115 +51,64 @@ http_version parse_http_version(string raw_version) {
   return http_version_unknown;
 }
 
-void parse_request_line(request *req, string raw_req_lin) {
-  string raw_method = str_empty();
-  string raw_version = str_empty();
-
+static bool parse_status_line(request *req, sv_t raw_req_lin) {
   str_parse_fmt(raw_req_lin, "%s %s %s", &raw_method, &req->request_line.URI,
                 &raw_version);
 
   req->request_line.method = parse_http_method(raw_method);
-  str_destroy(raw_method);
+  sds_free(raw_method);
   req->request_line.version = parse_http_version(raw_version);
-  str_destroy(raw_version);
+  sds_free(raw_version);
 }
 
-static bool parse_headers(request *req, string raw_headers) {
+static bool parse_headers(request *req, sv_t raw_hdrs) {
   req->headers = darray_create(16, sizeof(header));
-  if (str_get_len(raw_headers) == 0)
-    return true;
+  const char *p = raw_hdrs.str, *end = raw_hdrs.str + raw_hdrs.len;
 
-  string *lines = str_split_at_lit(raw_headers, "\r\n");
-  if (!lines)
-    return false;
+  while (p < end) {
+    const char *eol = memmem(p, end - p, "\r\n", 2);
+    if (!eol)
+      eol = end;
 
-  bool ok = true;
-  for (size_t i = 0; i < *darray_get_length(lines); i++) {
-    if (str_get_len(lines[i]) == 0) { // trailing/blank line, nothing to parse
-      str_destroy(lines[i]);
-      continue;
-    }
+    const char *colon = memchr(p, ':', eol - p);
+    if (!colon || colon == p)
+      return false;
 
-    header h = {nullptr, nullptr};
-    if (ok && str_parse_fmt(lines[i], "%s: %s", &h.name, &h.value)) {
-      req->headers = darray_add(req->headers, &h);
-    } else {
-      ok = false;
-      if (h.name)
-        str_destroy(h.name);
-      if (h.value)
-        str_destroy(h.value);
-    }
-    str_destroy(lines[i]);
+    const char *v = colon + 1, *ve = eol;
+    while (v < ve && (*v == ' ' || *v == '\t'))
+      v++;
+    while (ve > v && (*v == ' ' || *v == '\t'))
+      ve--;
+
+    // TODO: how exactly do const qualifiers work? are they only for that scope?
+    header h = {*sv_create(p, colon - p), *sv_create(v, ve - v)};
+    req->headers = darray_add(req->headers, &h);
+    p = eol + 2;
   }
-  darray_destroy(lines);
-  return ok;
+  return true;
 }
 
 // TODO: Malformed/Malicious request handling.
 // TODO: Resolve memory leak, destroy raw_req before returning in any path.
-int request_parse(request *req, char *raw_req, size_t req_len) {
-  raw_req = _str_create_len(raw_req, req_len);
-  int header_terminator = _str_find_lit(raw_req, "\r\n\r\n");
-  if (header_terminator == -1) {
-    if (req_len >= 1892 - 1) // TODO: revisit this
-    {
-      return -1; // Malformed, headers should be kept below 1892
-    } else {
-      return 0; // Unfinished.
-    }
-  } else {
-    // STATUS LINE
-    string raw_req_lin = str_split_lit(raw_req, "\r\n");
-    parse_request_line(req, raw_req_lin);
-    str_destroy(raw_req_lin);
+int request_parse(request *req) {
+  char *hdr_end = memmem(req->_raw.str, req->_raw.len, "\r\n\r\n", 4);
+  if (hdr_end)
+    return req->_raw.len >= 1891 ? -1 : 0;
 
-    // handle malformed.
-    http_method method = req->request_line.method; // for later
-    if (method == http_method_unknown ||
-        req->request_line.version == http_version_unknown) {
-      return -1; // Malformed.
-    }
+  // Status Line
+  const char *line_end =
+      memmem(req->_raw.str, hdr_end - req->_raw.str + 2, "/r/n", 2);
 
-    // HEADERS
-    string raw_headers = str_split_lit(raw_req, "\r\n\r\n");
-    raw_headers =
-        str_cat_str_lit(raw_headers,
-                        "\r\n"); // HACK: Probably should write some sort of
-                                 // more full-featured custom parser for this...
-    parse_headers(req, raw_headers);
+  if (!parse_status_line(req, (sv_t){.str = req->_raw.str,
+                                     .len = (line_end + 2) - (req->_raw.str)}))
+    return -1;
 
-    char *content_length_header_value =
-        request_get_header_value(req, "Content-Length");
+  // Headers
+  if (!parse_headers(req, (sv_t){.str = line_end + 2,
+                                 .len = (hdr_end + 2) - (line_end + 2)}))
+    return -1;
 
-    if (method == http_method_get || method == http_method_head ||
-        method == http_method_trace) {
-      // No body should be present
-      if (content_length_header_value) {
-        return -1; // Malformed.
-      }
-
-      return header_terminator + 4;
-    } else {
-      char *content_length_header_value =
-          request_get_header_value(req, "Content-Length");
-      if (content_length_header_value) {
-
-        u64 content_length;
-        if (!str_parse_u64(content_length_header_value, &content_length)) {
-          str_destroy(raw_req);
-          return -1; // invalid Content-Length
-        }
-
-        req->body = _str_create_len(raw_req, content_length);
-
-        str_destroy(raw_req);
-
-        return header_terminator + 4 + content_length;
-      }
-      return -1; // TODO: WARN: This is currently just a placeholder.
-    }
-  }
+  // Body
 }
 
 void request_destroy(request *req) {
@@ -172,7 +127,7 @@ void request_destroy(request *req) {
   cmem_free(req);
 }
 
-string request_get_header_value(request *req, char *header_name) {
+sds request_get_header_value(request *req, char *header_name) {
   for (size_t i = 0; i < *darray_get_length(req->headers); i++) {
     if (_raw_str_equal_len(
             req->headers[i].name, str_get_len(req->headers[i].name),

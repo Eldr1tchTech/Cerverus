@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/containers/sv.h"
 #include "core/util/protothread.h"
 #include "core/vendor/sds.h"
 
@@ -24,18 +25,28 @@ typedef enum http_version {
 } http_version;
 
 typedef struct header {
-  sds name;
-  sds value;
+  union {
+    struct {
+      sv_t name_sv;
+      sv_t value_sv;
+    } sv;
+    struct {
+      sds name_sds;
+      sds value_sds;
+    } sds;
+  };
 } header;
 
+// TODO: Convert sds to sv (string view) and save the raw request
 typedef struct request {
+  sv_t _raw;
   struct {
     http_method method;
-    sds URI;
+    sv_t URI;
     http_version version;
   } request_line;
   header *headers;
-  sds body;
+  sv_t body;
 } request;
 
 typedef struct response {

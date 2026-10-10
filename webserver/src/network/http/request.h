@@ -11,7 +11,7 @@
  * @param req the reqeust structure to populate
  * @return int -1 for missing headers, 0 if unifinished, otherwise size consumed
  */
-int request_parse(request *req, char *raw_req, size_t req_len);
+int request_parse(request *req, sds raw_req);
 
 // Frees passed request and destroys pointer.
 void request_destroy(request *req);
@@ -23,4 +23,4 @@ void request_destroy(request *req);
  * @param header_name
  * @return char*
  */
-char *request_get_header_value(request *req, char *header_name);
+sds request_get_header_value(request *req, char *header_name);

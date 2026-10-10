@@ -1,12 +1,26 @@
 #pragma once
 
 #include "core/vendor/sds.h"
+#include <string.h>
 
 typedef unsigned long size_t;
 typedef char *cstr;      // C string
 typedef const char *lit; // string literal
 
 #define sdsnewlit(lit) sdsnewlen("" lit, (sizeof(lit)) - 1)
+
+static inline int sdscmplitlen(const sds s, const char *lit, size_t litlen) {
+  size_t len = sdslen(s);
+  size_t minlen = len < litlen ? len : litlen;
+  int cmp = memcmp(s, lit, minlen);
+  if (cmp == 0)
+    return len > litlen ? 1 : (len < litlen ? -1 : 0);
+  return cmp;
+}
+
+#define sdscmplit(s, lit) sdscmplitlen((s), "" lit, sizeof(lit) - 1)
+
+#define sdseqlit(s, lit) (sdscmplit((s), lit) == 0)
 
 typedef unsigned char u8;
 typedef unsigned short u16;

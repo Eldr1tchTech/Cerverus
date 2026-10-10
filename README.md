@@ -10,6 +10,7 @@ A high performance webserver made for linux first, should eventually also be abl
 - create a darray_foreach
 - use GnuTLS for the SSL handshake
 - Uploading/Downloading Files
+- Implement a sort of stringview to avoid unnecessary string copying when parsing
 
 ## NOTE
 
