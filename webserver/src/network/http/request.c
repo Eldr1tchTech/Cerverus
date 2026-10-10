@@ -5,7 +5,6 @@
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
 #include "core/vendor/sds.h"
-#include "defines.h"
 #include "network/network_types.inl"
 
 #include <stddef.h>
@@ -15,50 +14,68 @@
 #define REQUEST_PARSE_INVALID INT_MIN
 
 // TODO: Properly handle http_method_unknown parsing
-http_method parse_http_method(const string raw_method) {
-  if (str_equal_lit(raw_method, "GET")) {
+static http_method parse_http_method(const sv_t m) {
+  if (sv_eq_lit(m, "GET"))
     return http_method_get;
-  } else if (str_equal_lit(raw_method, "HEAD")) {
+  if (sv_eq_lit(m, "HEAD"))
     return http_method_head;
-  } else if (str_equal_lit(raw_method, "OPTIONS")) {
+  if (sv_eq_lit(m, "OPTIONS"))
     return http_method_options;
-  } else if (str_equal_lit(raw_method, "TRACE")) {
+  if (sv_eq_lit(m, "TRACE"))
     return http_method_trace;
-  } else if (str_equal_lit(raw_method, "PUT")) {
+  if (sv_eq_lit(m, "PUT"))
     return http_method_put;
-  } else if (str_equal_lit(raw_method, "DELETE")) {
+  if (sv_eq_lit(m, "DELETE"))
     return http_method_delete;
-  } else if (str_equal_lit(raw_method, "POST")) {
+  if (sv_eq_lit(m, "POST"))
     return http_method_post;
-  } else if (str_equal_lit(raw_method, "PATCH")) {
+  if (sv_eq_lit(m, "PATCH"))
     return http_method_patch;
-  } else if (str_equal_lit(raw_method, "CONNECT")) {
+  if (sv_eq_lit(m, "CONNECT"))
     return http_method_connect;
-  }
+
   LOG_DEBUG("parse_http_method - Unable to parse an http_method from the "
-            "provided string: %s.",
-            raw_method);
+            "provided string: %.*s.",
+            (int)m.len, m.str);
   return http_method_unknown;
 }
 
-http_version parse_http_version(sds raw_version) {
-  if (sdseqlit(raw_version, "HTTP/1.1")) {
+static http_version parse_http_version(const sv_t v) {
+  if (sv_eq_lit(v, "HTTP/1.1"))
     return http_version_1p1;
-  }
+
   LOG_DEBUG("parse_http_version - Unable to parse an http_version from the "
-            "provided string: %s.",
-            raw_version);
+            "provided string: %.*s.",
+            (int)v.len, v.str);
   return http_version_unknown;
 }
 
-static bool parse_status_line(request *req, sv_t raw_req_lin) {
-  str_parse_fmt(raw_req_lin, "%s %s %s", &raw_method, &req->request_line.URI,
-                &raw_version);
+static bool parse_status_line(request *req, sv_t line) {
+  const char *end = line.str + line.len;
 
-  req->request_line.method = parse_http_method(raw_method);
-  sds_free(raw_method);
-  req->request_line.version = parse_http_version(raw_version);
-  sds_free(raw_version);
+  const char *sp1 = memchr(line.str, ' ', line.len);
+  if (!sp1)
+    return false;
+
+  const char *sp2 = memchr(sp1 + 1, ' ', end - (sp1 + 1));
+  if (!sp2)
+    return false;
+
+  sv_t method = {line.str, (size_t)(sp1 - line.str)};
+  sv_t uri = {sp1 + 1, (size_t)(sp2 - (sp1 + 1))};
+  sv_t version = {sp2 + 1, (size_t)(end - (sp2 + 1))};
+
+  if (method.len == 0 || uri.len == 0)
+    return false; // double-space
+  if (memchr(version.str, ' ', version.len))
+    return false; // 4th token
+
+  req->status_line.method = parse_http_method(method);
+  req->status_line.URI = uri;
+  req->status_line.version = parse_http_version(version);
+
+  return req->status_line.method != http_method_unknown &&
+         req->status_line.version != http_version_unknown;
 }
 
 static bool parse_headers(request *req, sv_t raw_hdrs) {

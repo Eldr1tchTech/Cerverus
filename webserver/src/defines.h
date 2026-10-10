@@ -4,12 +4,12 @@
 #include <string.h>
 
 typedef unsigned long size_t;
-typedef char *cstr;      // C string
-typedef const char *lit; // string literal
+typedef char *cstr_t;      // C string
+typedef const char *lit_t; // string literal
 
 #define sdsnewlit(lit) sdsnewlen("" lit, (sizeof(lit)) - 1)
 
-static inline int sdscmplitlen(const sds s, const char *lit, size_t litlen) {
+static inline int sdscmplitlen(const sds s, lit_t lit, size_t litlen) {
   size_t len = sdslen(s);
   size_t minlen = len < litlen ? len : litlen;
   int cmp = memcmp(s, lit, minlen);

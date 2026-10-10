@@ -44,7 +44,7 @@ typedef struct request {
     http_method method;
     sv_t URI;
     http_version version;
-  } request_line;
+  } status_line;
   header *headers;
   sv_t body;
 } request;
