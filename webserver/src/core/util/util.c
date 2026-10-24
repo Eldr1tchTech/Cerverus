@@ -8,7 +8,6 @@
 #include <dirent.h>
 #include <fcntl.h>
 
-// LEFTOFF:
 void darray_destroy_string_helper(darray darr) {
   sds *_darr = darr;
   darray_foreach(_darr, element) { sds_free(element); }
@@ -47,7 +46,7 @@ void recursive_walk(DIR *dir, const sds prefix, darray files_darr) {
   }
 }
 
-darray _list_files(const cstr dir_path) {
+darray _list_files(const cstr_t dir_path) {
   darray files_darr = darray_create(8, sizeof(sds));
 
   DIR *dir = opendir(dir_path);

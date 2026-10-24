@@ -1,14 +1,16 @@
 #include "response.h"
 
+#include "core/containers/darray.h"
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
+#include "core/util/util.h"
+#include "core/vendor/sds.h"
+#include "defines.h"
+#include "network/network_types.inl"
 
 #include <stdio.h>
 
-// Use string literals for performance boosts
-#define HTTP_VERSION_1P1_LITERAL "HTTP/1.1"
-
-char *serialize_http_version(http_version version) {
+lit_t serialize_http_version(http_version version) {
   switch (version) {
   case http_version_1p1:
     return HTTP_VERSION_1P1_LITERAL;
@@ -19,37 +21,53 @@ char *serialize_http_version(http_version version) {
   }
 }
 
-response *response_create() {
-  response *new_res = cmem_alloc(sizeof(response));
+response_t *response_create() {
+  response_t *new_res = cmem_alloc(sizeof(response_t));
 
-  new_res->headers = darray_create(16, sizeof(header));
+  new_res->headers = darray_create(16, sizeof(header_t));
 
   return new_res;
 }
 
-void response_add_header(response *res, header h) {
+void response_add_header(response_t *res, header_t h) {
   darray_add(res->headers, &h);
 }
 
-string response_serialize(response *res) {
+void response_destroy(response_t* res) {
+  // STATUS LINE
+
+  // HEADERS
+  darray_foreach(res->headers, elem) {
+    sds_free(elem->sds.name);
+    sds_free(elem->sds.value);
+  }
+  darray_destroy(res->headers);
+
+  // BODY
+  if (res->body) {
+    sds_free(res->body);
+  }
+}
+
+sds response_serialize(response_t *res) {
   // Pass 1: Calculate size
   size_t size = 0;
 
   // STATUS LINE
-  const char *version = serialize_http_version(res->status_line.version);
+  lit_t version = serialize_http_version(res->status_line.version);
   if (!version) {
     LOG_ERROR("response_serialize - No version value.");
     return nullptr;
   }
 
-  size += STR_LIT_LEN(version) + 1 +
+  size += litlen(version) + 1 +
           str_get_u64_len(res->status_line.status_code) + 1 +
           str_get_len(res->status_line.reason_phrase) + 2;
 
   // HEADERS
   for (size_t i = 0; i < *darray_get_length(res->headers); i++) {
-    size += str_get_len(res->headers[i].name) + 2 +
-            str_get_len(res->headers[i].value) + 2;
+    size += sdslen(res->headers[i].sds.name) + 2 +
+            sdslen(res->headers[i].sds.value) + 2;
   }
 
   size += 2;
@@ -59,8 +77,7 @@ string response_serialize(response *res) {
   // Pass 2: Allocate string and fill it
 
   // Allocate
-  string raw_res = str_empty();
-  raw_res = str_grow_to(raw_res, size);
+  sds raw_res = sdsempty();
 
   // STATUS LINE
   str_cat_str_lit(raw_res, version);

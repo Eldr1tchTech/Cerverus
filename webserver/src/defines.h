@@ -7,7 +7,9 @@ typedef unsigned long size_t;
 typedef char *cstr_t;      // C string
 typedef const char *lit_t; // string literal
 
-#define sdsnewlit(lit) sdsnewlen("" lit, (sizeof(lit)) - 1)
+#define litlen(lit) ((sizeof("" lit)) - 1)
+
+#define sdsnewlit(lit) sdsnewlen("" lit, litlen(lit))
 
 static inline int sdscmplitlen(const sds s, lit_t lit, size_t litlen) {
   size_t len = sdslen(s);

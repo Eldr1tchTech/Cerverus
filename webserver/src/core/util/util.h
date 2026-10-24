@@ -4,4 +4,4 @@
 
 void darray_destroy_string_helper(darray darr);
 
-darray _list_files(const cstr root_path);
+darray _list_files(const cstr_t root_path);

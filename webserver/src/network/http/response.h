@@ -3,9 +3,9 @@
 #include "network/network_types.inl"
 
 // Allocates the structure. Note this does not set ANY values.
-response *response_create();
+response_t *response_create();
 
-void response_add_header(response *res, header h);
+void response_add_header(response_t *res, header_t h);
 
 // Destroys the response and returns in serialized format.
-string response_serialize(response *res);
+sds response_serialize(response_t *res);

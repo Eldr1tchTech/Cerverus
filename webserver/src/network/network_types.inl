@@ -6,6 +6,9 @@
 
 #define MAX_HEADER_COUNT 32
 
+// Use string literals for performance boosts
+#define HTTP_VERSION_1P1_LITERAL "HTTP/1.1"
+
 typedef enum http_method {
   http_method_get,
   http_method_head,
@@ -24,63 +27,62 @@ typedef enum http_version {
   http_version_unknown,
 } http_version;
 
-typedef struct header {
+typedef struct header_t {
   union {
     struct {
-      sv_t name_sv;
-      sv_t value_sv;
+      sv_t name;
+      sv_t value;
     } sv;
     struct {
-      sds name_sds;
-      sds value_sds;
+      sds name;
+      sds value;
     } sds;
   };
-} header;
+} header_t;
 
-// TODO: Convert sds to sv (string view) and save the raw request
-typedef struct request {
-  sv_t _raw;
+typedef struct request_t {
+  sds _raw;
   struct {
     http_method method;
     sv_t URI;
     http_version version;
   } status_line;
-  header *headers;
+  header_t *headers;
   sv_t body;
-} request;
+} request_t;
 
-typedef struct response {
+typedef struct response_t {
   struct {
     http_version version;
     int status_code;
     sds reason_phrase;
   } status_line;
-  header *headers;
+  header_t *headers;
   sds body;
-} response;
+} response_t;
 
-typedef struct route_segment {
+typedef struct route_segment_t {
   sds path_segment;
   bool is_dynamic;
-} route_segment;
+} route_segment_t;
 
-typedef struct route {
-  route_segment *segments_darr;
+typedef struct route_t {
+  route_segment_t *segments_darr;
   http_method method;
   pt_fn callback;
-} route;
+} route_t;
 
-typedef struct trie_node {
-  struct trie_node *children;
-  route_segment segment;
+typedef struct trie_node_t {
+  struct trie_node_t *children;
+  route_segment_t segment;
   pt_fn callback;
-} trie_node;
+} trie_node_t;
 
-typedef struct trie {
-  trie_node **roots;
+typedef struct trie_t {
+  trie_node_t **roots;
 } trie;
 
 typedef struct minimal_locals {
   int client_fd;
-  request *req;
+  request_t *req;
 } minimal_locals;
