@@ -25,10 +25,10 @@ typedef struct server {
     LRU_cache *LRU_fd_cache;
   } uring;
   server_config *conf;
-  router *rtr;
+  router_t *rtr;
 } server;
 
-server *server_create(server_config *s_conf, router *rtr);
+server *server_create(server_config *s_conf, router_t *rtr);
 
 bool server_setup(server *srv);
 

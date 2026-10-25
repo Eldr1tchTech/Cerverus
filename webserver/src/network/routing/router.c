@@ -10,8 +10,8 @@
 #include "network/routing/route_trie.h"
 #include <stddef.h>
 
-router *router_create(router_config *rtr_conf) {
-  router *rtr = cmem_alloc(sizeof(router));
+router_t *router_create(router_config *rtr_conf) {
+  router_t *rtr = cmem_alloc(sizeof(router_t));
   cmem_mcpy(&rtr->conf, rtr_conf, sizeof(router_config));
   rtr->routing_table = trie_create();
 

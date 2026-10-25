@@ -19,9 +19,9 @@ typedef enum uring_op_type {
 
 typedef struct recv_context {
   int client_fd;
-  char *buffer;
+  sds buffer;
   size_t offset;
-  request request;
+  request_t request;
 } recv_context;
 
 typedef struct send_context {
@@ -66,7 +66,7 @@ typedef struct FILE {
 void async_io_setup();
 void async_io_shutdown();
 
-void async_io_update_values(int server_fd, router *rtr);
+void async_io_update_values(int server_fd, router_t *rtr);
 
 void handle_accept_submission();
 void handle_accept_completion(struct io_uring_cqe *cqe,

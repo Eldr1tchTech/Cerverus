@@ -3,12 +3,10 @@
 #include "core/containers/darray.h"
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
-#include "core/util/util.h"
 #include "core/vendor/sds.h"
 #include "defines.h"
 #include "network/network_types.inl"
-
-#include <stdio.h>
+#include <string.h>
 
 lit_t serialize_http_version(http_version version) {
   switch (version) {
@@ -37,6 +35,8 @@ void response_destroy(response_t* res) {
   // STATUS LINE
 
   // HEADERS
+
+  // BODY
   darray_foreach(res->headers, elem) {
     sds_free(elem->sds.name);
     sds_free(elem->sds.value);
@@ -50,63 +50,24 @@ void response_destroy(response_t* res) {
 }
 
 sds response_serialize(response_t *res) {
-  // Pass 1: Calculate size
-  size_t size = 0;
-
-  // STATUS LINE
-  lit_t version = serialize_http_version(res->status_line.version);
-  if (!version) {
-    LOG_ERROR("response_serialize - No version value.");
-    return nullptr;
-  }
-
-  size += litlen(version) + 1 +
-          str_get_u64_len(res->status_line.status_code) + 1 +
-          str_get_len(res->status_line.reason_phrase) + 2;
-
-  // HEADERS
-  for (size_t i = 0; i < *darray_get_length(res->headers); i++) {
-    size += sdslen(res->headers[i].sds.name) + 2 +
-            sdslen(res->headers[i].sds.value) + 2;
-  }
-
-  size += 2;
-
-  // BODY
-
-  // Pass 2: Allocate string and fill it
-
-  // Allocate
   sds raw_res = sdsempty();
 
+  lit_t version = serialize_http_version(res->status_line.version);
+  if (version == nullptr) return raw_res;
+
   // STATUS LINE
-  str_cat_str_lit(raw_res, version);
-  str_cat_str_lit(raw_res, " ");
-  str_cat_u64(raw_res, res->status_line.status_code);
-  str_cat_str_lit(raw_res, " ");
-  str_cat_str(raw_res, res->status_line.reason_phrase);
-  str_cat_str_lit(raw_res, "\r\n");
+  raw_res = sdscatprintf(raw_res, "%s %i %s\r\n", version, res->status_line.status_code, res->status_line.reason_phrase);
 
   // HEADERS
-  for (size_t i = 0; i < *darray_get_length(res->headers); i++) {
-    str_cat_str(raw_res, res->headers[i].name);
-    str_cat_str_lit(raw_res, ": ");
-    str_cat_str(raw_res, res->headers[i].value);
-    str_cat_str_lit(raw_res, "\r\n");
+  darray_foreach(res->headers, elem) {
+    raw_res = sdscatprintf(raw_res, "%s: %s\r\n", elem->sds.name, elem->sds.value);
   }
-
-  str_cat_str_lit(raw_res, "\r\n");
 
   // BODY
-  // TODO: body handling has been removed for now, as there is no need until the
-  // server can at least serve static files.
+  if (res->body) raw_res = sdscatsds(raw_res, res->body);
 
   // Destroy response
-  str_destroy(res->status_line.reason_phrase);
-  for (size_t i = 0; i < *darray_get_length(res->headers); i++) {
-    str_destroy(res->headers[i].name);
-    str_destroy(res->headers[i].value);
-  }
+  response_destroy(res);
 
   return raw_res;
 }

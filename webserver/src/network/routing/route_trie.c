@@ -2,10 +2,11 @@
 
 #include "core/memory/cmem.h"
 #include "core/util/util.h"
+#include "core/vendor/sds.h"
 
-trie_node *trie_node_create() {
-  trie_node *new_node = cmem_alloc(sizeof(trie_node));
-  new_node->children = darray_create(2, sizeof(trie_node));
+trie_node_t *trie_node_create() {
+  trie_node_t *new_node = cmem_alloc(sizeof(trie_node_t));
+  new_node->children = darray_create(2, sizeof(trie_node_t));
   new_node->segment.path_segment = nullptr;
   new_node->segment.is_dynamic = false;
   new_node->callback = nullptr;
@@ -13,21 +14,21 @@ trie_node *trie_node_create() {
   return new_node;
 }
 
-void trie_node_destroy(trie_node *t_node) {
+void trie_node_destroy(trie_node_t *t_node) {
   for (int i = 0; i < *darray_get_length(t_node->children); i++) {
     trie_node_destroy(&t_node->children[i]);
   }
 
   darray_destroy(t_node->children);
   if (t_node->segment.path_segment) {
-    str_destroy(t_node->segment.path_segment);
+    sds_free(t_node->segment.path_segment);
   }
   cmem_free(t_node);
 }
 
 trie *trie_create() {
   trie *new_trie = cmem_alloc(sizeof(trie));
-  new_trie->roots = cmem_alloc(http_method_unknown * sizeof(trie_node *));
+  new_trie->roots = cmem_alloc(http_method_unknown * sizeof(trie_node_t *));
   for (int i = 0; i < http_method_unknown; i++) {
     new_trie->roots[i] = trie_node_create();
   }
@@ -44,12 +45,12 @@ void trie_destroy(trie *t) {
 }
 
 // NOTE: For now it's just the first match, eventually it should be best match
-void trie_add_route(trie *t, route *rt) {
-  trie_node *current = t->roots[rt->method];
+void trie_add_route(trie *t, route_t *rt) {
+  trie_node_t *current = t->roots[rt->method];
 
   for (int i = 0; i < *darray_get_length(rt->segments_darr); i++) {
-    trie_node *children = current->children;
-    trie_node *next = nullptr;
+    trie_node_t *children = current->children;
+    trie_node_t *next = nullptr;
 
     // Search existing children for a matching segment
     for (int j = 0; j < *darray_get_length(current->children); j++) {
@@ -62,11 +63,11 @@ void trie_add_route(trie *t, route *rt) {
 
     // Not found — create and attach a new child node
     if (!next) {
-      trie_node new_node = {0};
+      trie_node_t new_node = {0};
       new_node.segment.path_segment =
           str_dup(rt->segments_darr[i].path_segment);
       new_node.segment.is_dynamic = rt->segments_darr[i].is_dynamic;
-      new_node.children = darray_create(2, sizeof(trie_node));
+      new_node.children = darray_create(2, sizeof(trie_node_t));
       new_node.callback = nullptr;
       children = darray_add(current->children, &new_node);
       next = &children[*darray_get_length(current->children) - 1];
@@ -81,7 +82,7 @@ void trie_add_route(trie *t, route *rt) {
 pt_fn trie_find_handler(trie *t, http_method method, string URI) {
   string *segment_darr = str_split_at_lit(URI, "/");
 
-  trie_node *root = t->roots[method];
+  trie_node_t *root = t->roots[method];
 
   // Find the final node
   for (int i = 0; i < *darray_get_length(segment_darr); i++) {

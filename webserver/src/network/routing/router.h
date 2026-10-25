@@ -9,14 +9,14 @@
 typedef struct router_config {
 } router_config;
 
-typedef struct router {
+typedef struct router_t {
   router_config conf;
   trie *routing_table;
   hashmap *public_directory_hmap;
-} router;
+} router_t;
 
-router *router_create(router_config *rtr_conf);
-void router_destroy(router *rtr);
+router_t *router_create(router_config *rtr_conf);
+void router_destroy(router_t *rtr);
 
-void router_add_route(router *rtr, route *rt);
-void router_handle_request(router *rtr, request *req, int client_fd);
+void router_add_route(router_t *rtr, route_t *rt);
+void router_handle_request(router_t *rtr, request_t *req, int client_fd);

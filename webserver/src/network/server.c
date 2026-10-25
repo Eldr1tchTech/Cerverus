@@ -1,13 +1,9 @@
 #include "server.h"
 
-#include "network_types.inl"
-
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
 #include "core/util/profiler.h"
 #include "network/IO/async_io.h"
-#include "network/http/response.h"
-#include "network/network_util.h"
 
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -21,7 +17,7 @@
 
 // TODO: Maybe it should take a pointer to the server, so taht it can be stack
 // allocated by the calling context
-server *server_create(server_config *s_conf, router *rtr) {
+server *server_create(server_config *s_conf, router_t *rtr) {
   server *s = cmem_alloc(sizeof(server));
   s->conf = s_conf;
   s->rtr = rtr;

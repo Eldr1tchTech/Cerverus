@@ -21,10 +21,11 @@ typedef struct uring_state {
   struct io_uring ring;
   int srv_fd;
   u64 connections;
-  router *rtr;
+  router_t *rtr;
 } uring_state;
 
-#define BUFFER_SIZE 1892
+#define RECV_CHUNK 4096
+#define MAX_REQUEST (16 * 1024)
 
 static uring_state state;
 
@@ -70,7 +71,7 @@ void async_io_shutdown() {
   io_uring_queue_exit(&state.ring);
 }
 
-void async_io_update_values(int server_fd, router *rtr) {
+void async_io_update_values(int server_fd, router_t *rtr) {
   state.srv_fd = server_fd;
   state.rtr = rtr;
 }
@@ -105,67 +106,55 @@ void handle_accept_completion(struct io_uring_cqe *cqe,
 void handle_recv_submission(int client_fd, recv_context *recv_ctx) {
   struct io_uring_sqe *sqe = io_uring_get_sqe_wrapper();
 
+  // TODO: maybe zero initialize
   logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
   ctx->op_type = uring_op_type_recv;
-  ctx->recv.client_fd = client_fd;
+
   if (recv_ctx) {
-    cmem_mcpy(&ctx->recv, recv_ctx, sizeof(recv_context));
+    ctx->recv = *recv_ctx;
   } else {
-    ctx->recv.buffer = cmem_alloc(BUFFER_SIZE);
-    ctx->recv.offset = 0;
+    ctx->recv.client_fd = client_fd;
+    ctx->recv.buffer = sdsempty();
   }
 
-  io_uring_prep_recv(sqe, ctx->recv.client_fd,
-                     ctx->recv.buffer + ctx->recv.offset,
-                     BUFFER_SIZE - ctx->recv.offset, 0);
-  io_uring_sqe_set_data(sqe, ctx);
+  ctx->recv.buffer = sdsMakeRoomFor(ctx->recv.buffer, RECV_CHUNK);
 
+  size_t len = sdslen(ctx->recv.buffer);
+  io_uring_prep_recv(sqe, ctx->recv.client_fd,
+                     ctx->recv.buffer + len,
+                     sdsavail(ctx->recv.buffer),
+                     0);
+  io_uring_sqe_set_data(sqe, ctx);
   io_uring_submit(&state.ring);
 }
 
-// TODO: Eventually should flush all requests within a read, not just the first
-// one.
-void handle_recv_completion(struct io_uring_cqe *cqe,
-                            logical_async_context *ctx) {
+void handle_recv_completion(struct io_uring_cqe *cqe, logical_async_context *ctx) {
   int bytes_read = cqe->res;
-  if (bytes_read < 0) {
-    LOG_ERROR("handle_recv_completion - Standard linux error.");
-    return;
-  } else if (bytes_read == 0) {
-    LOG_DEBUG("handle_recv_completion - Client closed connection. Feature not "
-              "yet implemeented.");
+  if (bytes_read <= 0) {
+    sdsfree(ctx->recv.buffer);
+    cmem_free(ctx);
     return;
   }
 
-  LOG_INFO("RECEIVED REQUEST: \n %s", ctx->recv.buffer);
+  sdsIncrLen(ctx->recv.buffer, bytes_read);
+  ctx->recv.request._raw = ctx->recv.buffer;
 
-  int parse_result = request_parse(&ctx->recv.request, ctx->recv.buffer,
-                                   ctx->recv.offset + bytes_read);
+  int parse_result = request_parse(&ctx->recv.request);
 
-  if (parse_result < 0) {
-    // TODO: send error
-    LOG_ERROR("handle_recv_completion - Error parsing, need to figure out "
-              "how to flush the buffer safely.");
+  if (parse_result < 0 || sdslen(ctx->recv.buffer) > MAX_REQUEST) {
+    // send 400/431 and close
+    sdsfree(ctx->recv.buffer);
+    cmem_free(ctx);
     return;
-  } else { // Not everything arrived, need more data.
-    if (parse_result == 0) {
-      if (ctx->recv.offset + bytes_read > BUFFER_SIZE) {
-        LOG_ERROR("handle_recv_completion - Attempted to overflow buffer.");
-      } else {
-        ctx->recv.offset += bytes_read;
-      }
-
-      handle_recv_submission(ctx->recv.client_fd, &ctx->recv);
-      cmem_free(ctx);
-      return;
-    } else {
-      ctx->recv.offset += bytes_read;
-      cmem_mcpy(ctx->recv.buffer, ctx->recv.buffer + ctx->recv.offset,
-                BUFFER_SIZE - (ctx->recv.offset));
-      ctx->recv.offset -= parse_result;
-      router_handle_request(state.rtr, &ctx->recv.request, ctx->recv.client_fd);
-    }
   }
+
+  if (parse_result == 0) {
+    handle_recv_submission(ctx->recv.client_fd, &ctx->recv);
+    cmem_free(ctx);
+    return;
+  }
+
+  router_handle_request(state.rtr, &ctx->recv.request, ctx->recv.client_fd);
 }
 
 void handle_openat_submission(sds path, int *fd, protothread_state *pt_state) {

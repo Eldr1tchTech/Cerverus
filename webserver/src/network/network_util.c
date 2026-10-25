@@ -4,7 +4,7 @@
 #include "core/vendor/sds.h"
 #include "defines.h"
 
-lit content_type_val_helper(sds ext) {
+lit_t content_type_val_helper(sds ext) {
   if (ext) {
 
     // TODO: write a helper function for the lit wrapper here
