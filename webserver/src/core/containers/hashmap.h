@@ -1,7 +1,6 @@
 #pragma once
 
 #include "core/vendor/sds.h"
-#include "defines.h"
 
 typedef size_t (*hash_fn)(sds key);
 

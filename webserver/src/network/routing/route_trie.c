@@ -54,8 +54,8 @@ void trie_add_route(trie *t, route_t *rt) {
 
     // Search existing children for a matching segment
     for (int j = 0; j < *darray_get_length(current->children); j++) {
-      if (str_equal(rt->segments_darr[i].path_segment,
-                    children[j].segment.path_segment)) {
+      if (sdscmp(rt->segments_darr[i].path_segment,
+                    children[j].segment.path_segment) == 0) {
         next = &children[j];
         break;
       }
@@ -65,7 +65,7 @@ void trie_add_route(trie *t, route_t *rt) {
     if (!next) {
       trie_node_t new_node = {0};
       new_node.segment.path_segment =
-          str_dup(rt->segments_darr[i].path_segment);
+          sdsdup(rt->segments_darr[i].path_segment);
       new_node.segment.is_dynamic = rt->segments_darr[i].is_dynamic;
       new_node.children = darray_create(2, sizeof(trie_node_t));
       new_node.callback = nullptr;
@@ -79,16 +79,17 @@ void trie_add_route(trie *t, route_t *rt) {
   current->callback = rt->callback;
 }
 
-pt_fn trie_find_handler(trie *t, http_method method, string URI) {
-  string *segment_darr = str_split_at_lit(URI, "/");
+pt_fn trie_find_handler(trie *t, http_method method, sds URI) {
+  int len = 0;
+  sds *segment_darr = sdssplitlen(URI, sdslen(URI), "/", 1, &len);
 
   trie_node_t *root = t->roots[method];
 
   // Find the final node
-  for (int i = 0; i < *darray_get_length(segment_darr); i++) {
+  for (int i = 0; i < len; i++) {
     for (int j = 0; j < *darray_get_length(root->children); j++) {
       // Check for static match
-      if (str_equal(segment_darr[i], root->children[j].segment.path_segment)) {
+      if (sdscmp(segment_darr[i], root->children[j].segment.path_segment) == 0) {
         root = &root->children[j];
         break;
       }
@@ -101,12 +102,12 @@ pt_fn trie_find_handler(trie *t, http_method method, string URI) {
 
       if (j == *darray_get_length(root->children) - 1) {
         // Not present
-        darray_destroy_string_helper(segment_darr);
+  sdsfreesplitres(segment_darr, len);
         return nullptr;
       }
     }
   }
-  darray_destroy_string_helper(segment_darr);
+  sdsfreesplitres(segment_darr, len);
 
   return root->callback;
 }

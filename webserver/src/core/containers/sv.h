@@ -7,6 +7,17 @@ typedef struct sv_t {
   size_t len;
 } sv_t;
 
+static inline int svcmplitlen(const sv_t sv, lit_t lit, size_t litlen) {
+  size_t len = sv.len;
+  size_t minlen = len < litlen ? len : litlen;
+  int cmp = memcmp(sv.ptr, lit, minlen);
+  if (cmp == 0)
+    return len > litlen ? 1 : (len < litlen ? -1 : 0);
+  return cmp;
+}
+
+#define svcmplit(sv, lit) svcmplitlen((sv), "" lit, litlen(lit))
+
 sv_t *sv_create(char *str, size_t len);
 
 void sv_destroy(sv_t *sv);

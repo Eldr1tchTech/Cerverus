@@ -8,21 +8,21 @@ lit_t content_type_val_helper(sds ext) {
   if (ext) {
 
     // TODO: write a helper function for the lit wrapper here
-    if (str_equal_lit(ext, "html")) {
+    if (sdscmplit(ext, "html")) {
       return "text/html";
-    } else if (str_equal_lit(ext, "css")) {
+    } else if (sdscmplit(ext, "css")) {
       return "text/css";
-    } else if (str_equal_lit(ext, "jpg") || str_equal_lit(ext, "jpeg")) {
+    } else if (sdscmplit(ext, "jpg") || sdscmplit(ext, "jpeg")) {
       return "image/jpeg";
-    } else if (str_equal_lit(ext, "png")) {
+    } else if (sdscmplit(ext, "png")) {
       return "image/png";
-    } else if (str_equal_lit(ext, "gif")) {
+    } else if (sdscmplit(ext, "gif")) {
       return "image/gif";
-    } else if (str_equal_lit(ext, "webp")) {
+    } else if (sdscmplit(ext, "webp")) {
       return "image/webp";
-    } else if (str_equal_lit(ext, "svg")) {
+    } else if (sdscmplit(ext, "svg")) {
       return "image/svg+xml";
-    } else if (str_equal_lit(ext, "ico")) {
+    } else if (sdscmplit(ext, "ico")) {
       return "image/x-icon";
     } else {
       LOG_ERROR("content_type_val_helper - Currently unsuported file "

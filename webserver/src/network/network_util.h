@@ -1,5 +1,7 @@
 #pragma once
 
-string *parse_URI(char *URI);
+#include "defines.h"
 
-str_lit content_type_val_helper(string ext);
+sds *parse_URI(char *URI);
+
+lit_t content_type_val_helper(sds ext);

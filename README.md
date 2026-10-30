@@ -5,6 +5,7 @@ A high performance webserver made for linux first, should eventually also be abl
 ## TODO
 
 - finish the refactor to use sds, also do sanity and cleanup passes over hmap and LRU_cache
+  - rework the trie
 - finish transitioning types to be _t affixed
 - finish io_uring state machine
 - use GnuTLS for the SSL handshake
