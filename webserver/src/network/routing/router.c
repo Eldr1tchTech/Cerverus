@@ -83,12 +83,14 @@ void route_callback_send_file(protothread_state *state) {
 
   // TODO: Make this more user-friendly
   // Content-Type
-  char *extension = memchr(locals->file.name, '.', sdslen(locals->file.name));
-  if (extension == nullptr)
+  char *dot = memchr(locals->file.name, '.', sdslen(locals->file.name));
+  if (!dot)
     LOG_ERROR("no extention present.");
-  sv_t type = {.ptr = extension + 1, .len = extension - locals->file.name - 1};
+  sv_t type = {.ptr = dot + 1,
+               .len =
+                   locals->file.name + sdslen(locals->file.name) - (dot + 1)};
   header_t h = {.sds = {.name = sdsnewlit("Content-Type"),
-                        .value = content_type_val_helper(type)}};
+                        .value = sdsnew(content_type_val_helper(type))}};
   response_add_header(locals->res, h);
 
   // Content-Length
@@ -171,7 +173,7 @@ void prep_route_callback_send_file(int client_fd, sds path) {
 
 // TODO: Eventually match to check if given file exists
 void router_handle_request(router_t *rtr, request_t *request, int client_fd) {
-  if (svcmplit(request->status_line.URI, "/")) {
+  if (sv_eq_lit(request->status_line.URI, "/")) {
     prep_route_callback_send_file(client_fd,
                                   sdsnewlit("assets/public/index.html"));
   }
@@ -193,9 +195,8 @@ void router_handle_request(router_t *rtr, request_t *request, int client_fd) {
   // 2. Check against dynamic registered routes
   if (rtr && rtr->routing_table) {
     sds URI_sds = svtosds(request->status_line.URI);
-    pt_fn handler =
-        trie_find_handler(rtr->routing_table, request->status_line.method,
-                          URI_sds);
+    pt_fn handler = trie_find_handler(rtr->routing_table,
+                                      request->status_line.method, URI_sds);
 
     protothread_state *state = cmem_alloc(sizeof(protothread_state));
     state->resume_label = nullptr;

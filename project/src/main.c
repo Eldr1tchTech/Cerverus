@@ -55,11 +55,11 @@ void route_callback_test(protothread_state *state) {
 
   // TODO: Make this more user-friendly
   // Content-Type
-  char *ext = memchr(locals->file.name, '.', sdslen(locals->file.name));
+  char *dot = memchr(locals->file.name, '.', sdslen(locals->file.name));
   header_t h = {
       .sds = {.name = sdsnewlit("Content-Type"),
               .value = sdsnew(content_type_val_helper((sv_t){
-                  .ptr = ext + 1, .len = ext - locals->file.name - 1}))}};
+                  .ptr = dot + 1, .len = locals->file.name + sdslen(locals->file.name) - (dot + 1)}))}};
   response_add_header(locals->res, h);
 
   // Content-Length

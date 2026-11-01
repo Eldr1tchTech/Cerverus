@@ -45,7 +45,7 @@ static http_version parse_http_version(const sv_t v) {
     return http_version_1p1;
 
   LOG_DEBUG("parse_http_version - Unable to parse an http_version from the "
-            "provided string: %.*s.",
+            "provided string: %.*s",
             (int)v.len, v.ptr);
   return http_version_unknown;
 }
@@ -94,38 +94,44 @@ static bool parse_headers(request_t *req, sv_t raw_hdrs) {
     const char *v = colon + 1, *ve = eol;
     while (v < ve && (*v == ' ' || *v == '\t'))
       v++;
-    while (ve > v && (*v == ' ' || *v == '\t'))
+    while (ve > v && (ve[-1] == ' ' || ve[-1] == '\t'))
       ve--;
 
-    // TODO: how exactly do const qualifiers work? are they only for that scope?
-    header_t h = {*sv_create(p, colon - p), *sv_create(v, ve - v)};
+    header_t h = {.sv = {.name = {.ptr = p, .len = colon - p},
+                         .value = {.ptr = v, .len = ve - v}}};
     req->headers = darray_add(req->headers, &h);
     p = eol + 2;
   }
   return true;
 }
 
+#define MAX_HEADER_BYTES 4096
+
 // TODO: Malformed/Malicious request handling.
-// TODO: Resolve memory leak, destroy raw_req before returning in any path.
 int request_parse(request_t *req) {
-  char *hdr_end = memmem(req->_raw, sdslen(req->_raw), "\r\n\r\n", 4);
-  if (hdr_end)
-    return sdslen(req->_raw) >= 1891 ? -1 : 0;
+  char *raw = req->_raw;
+  size_t raw_len = sdslen(req->_raw);
 
-  // Status Line
-  const char *line_end =
-      memmem(req->_raw, hdr_end - req->_raw + 2, "/r/n", 2);
+  char *hdr_end = memmem(raw, raw_len, "\r\n\r\n", 4);
+  if (!hdr_end)
+    return raw_len >= MAX_HEADER_BYTES ? -1 : 0;   // pick a real constant instead of 1891
 
-  if (!parse_status_line(req, (sv_t){.ptr = req->_raw,
-                                     .len = (line_end + 2) - (req->_raw)}))
+  // Status line
+  char *line_end = memmem(raw, (hdr_end - raw) + 2, "\r\n", 2);
+  if (!line_end)
     return -1;
 
-  // Headers
+  if (!parse_status_line(req, (sv_t){.ptr = raw, .len = line_end - raw}))
+    return -1;
+
+  // Headers (may be empty if line_end == hdr_end)
   if (!parse_headers(req, (sv_t){.ptr = line_end + 2,
                                  .len = (hdr_end + 2) - (line_end + 2)}))
     return -1;
 
-  // Body
+  // Body: not handled yet
+  req->body = (sv_t){.ptr = hdr_end + 4, .len = 0};
+  return (int)((hdr_end + 4) - raw);
 }
 
 void request_destroy(request_t *req) {
@@ -137,9 +143,9 @@ void request_destroy(request_t *req) {
 // TODO: LIT  optimization
 sv_t request_get_header_value(request_t *req, char *hdr_name) {
   darray_foreach(req->headers, element) {
-    if (sv_eq_ci(element->sv.name, (sv_t){.ptr = hdr_name, .len = strlen(hdr_name)})) return element->sv.value;
+    if (sv_eq_ci(element->sv.name,
+                 (sv_t){.ptr = hdr_name, .len = strlen(hdr_name)}))
+      return element->sv.value;
   }
-  return (sv_t){ nullptr, 0 };
-
-
+  return (sv_t){nullptr, 0};
 }

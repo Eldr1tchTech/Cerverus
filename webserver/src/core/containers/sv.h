@@ -22,7 +22,7 @@ static inline int sv_cmp(sv_t a, sv_t b) {
   return _strcmp(a.ptr, a.len, a.ptr, a.len);
 }
 
-static inline bool sv_eq(sv_t sv, const char *str, size_t len) {return sv.len == len && _strcmp(sv.ptr, sv.len, str, len);}
+static inline bool sv_eq(sv_t sv, const char *str, size_t len) {return sv.len == len && _strcmp(sv.ptr, sv.len, str, len) == 0;}
 static inline bool sv_eq_ci(sv_t a, sv_t b) { return a.len == b.len && strncasecmp(a.ptr, b.ptr, a.len) == 0; }
 
 #define sv_eq_lit(sv, lit) sv_eq(sv, "" lit, sizeof(lit) - 1)

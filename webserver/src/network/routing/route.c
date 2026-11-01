@@ -2,7 +2,6 @@
 
 #include "core/containers/darray.h"
 #include "core/memory/cmem.h"
-#include "core/util/util.h"
 #include "core/vendor/sds.h"
 
 route_t *route_create(http_method method, sds URI, pt_fn callback) {

@@ -91,6 +91,7 @@ void handle_accept_submission() {
 
 void handle_accept_completion(struct io_uring_cqe *cqe,
                               logical_async_context *ctx) {
+  LOG_INFO("received an accept request.");
   if (cqe->res < 0) {
     LOG_ERROR("handle_accept_completion - accept failed: %d", cqe->res);
   } else {
@@ -146,6 +147,7 @@ void handle_recv_completion(struct io_uring_cqe *cqe, logical_async_context *ctx
     // send 400/431 and close
     sdsfree(ctx->recv.buffer);
     cmem_free(ctx);
+    LOG_INFO("recv completion finished.");
     return;
   }
 
@@ -155,6 +157,7 @@ void handle_recv_completion(struct io_uring_cqe *cqe, logical_async_context *ctx
     return;
   }
 
+  LOG_INFO("recv completion finished, successfully.\n""%.*s", sdslen(ctx->recv.request._raw), ctx->recv.request._raw);
   router_handle_request(state.rtr, &ctx->recv.request, ctx->recv.client_fd);
 }
 
@@ -166,7 +169,9 @@ void handle_openat_submission(sds path, int *fd, protothread_state *pt_state) {
   ctx->openat.fd = fd;
   ctx->pt_state = pt_state;
 
-  io_uring_prep_openat(sqe, 0, path, 0, O_RDONLY);
+  LOG_INFO("openat path: %.*s", sdslen(path), path);
+
+  io_uring_prep_openat(sqe, AT_FDCWD, path, 0, O_RDONLY);
   io_uring_sqe_set_data(sqe, ctx);
 
   io_uring_submit(&state.ring);
@@ -328,11 +333,10 @@ void async_io_open_file(protothread_state *pt_state) {
   PT_BEGIN(pt_state, async_io_open_file);
 
   // Fill out synchronous parts
-  locals->file = cmem_alloc(sizeof(file_t));
   int count;
   sds *path_shards = sdssplitlen(locals->path, sdslen(locals->path), "/", 1,
-                                 &count); // TODO: fiinish this
-  locals->file->name = sdsdup(path_shards[*darray_get_length(path_shards) - 1]);
+                                 &count); // TODO: finish this
+  locals->file->name = sdsdup(path_shards[count - 1]);
   sdsfreesplitres(path_shards, count);
 
   PT_WAIT(pt_state,
@@ -352,4 +356,6 @@ void async_io_open_file(protothread_state *pt_state) {
 
 void async_io_send_buffer(sds str) {}
 
-void async_io_sendfile(int fd) {}
+void async_io_sendfile(int fd) {
+  
+}
