@@ -2,7 +2,9 @@
 
 #include "core/containers/darray.h"
 
+#include "core/containers/sv.h"
 #include "core/memory/cmem.h"
+#include "core/util/logger.h"
 #include "core/util/util.h"
 #include "core/vendor/sds.h"
 #include "defines.h"
@@ -12,6 +14,7 @@
 #include "network/routing/route_trie.h"
 #include <stddef.h>
 #include <stdio.h>
+#include <string.h>
 
 router_t *router_create(router_config *rtr_conf) {
   router_t *rtr = cmem_alloc(sizeof(router_t));
@@ -26,7 +29,10 @@ router_t *router_create(router_config *rtr_conf) {
       hashmap_create(*darray_get_length(public_files_darr), 0.67, 0, nullptr);
 
   for (size_t i = 0; i < *darray_get_length(public_files_darr); i++) {
-    hashmap_set(rtr->public_directory_hmap, public_files_darr[i], nullptr);
+    hashmap_set(rtr->public_directory_hmap,
+                (sv_t){.ptr = public_files_darr[i],
+                       .len = sdslen(public_files_darr[i])},
+                nullptr);
   }
 
   darray_destroy(public_files_darr);
@@ -77,13 +83,13 @@ void route_callback_send_file(protothread_state *state) {
 
   // TODO: Make this more user-friendly
   // Content-Type
-  sds str_temp = sdsdup(locals->file.name);
-  sds str_type = str_split_lit(str_temp, ".");
+  char *extension = memchr(locals->file.name, '.', sdslen(locals->file.name));
+  if (extension = nullptr)
+    LOG_ERROR("no extention present.");
+  sv_t type = {.ptr = extension + 1, .len = extension - locals->file.name - 1};
   header_t h = {.sds = {.name = sdsnewlit("Content-Type"),
-              .value = content_type_val_helper(str_type)}};
+                        .value = content_type_val_helper(type)}};
   response_add_header(locals->res, h);
-  sdsfree(str_type);
-  sdsfree(str_temp);
 
   // Content-Length
   h.sds.name = sdsnewlit("Content-Length");
@@ -171,15 +177,14 @@ void router_handle_request(router_t *rtr, request_t *request, int client_fd) {
   }
 
   // 1. Check public directory
-  // Implement public directory hashmap here.
   if (request->status_line.method == http_method_get) {
-    sds temp_file_name = sdsdup(request->status_line.URI);
-    sds ext = str_split_lit(temp_file_name, ".");
-
+    char *ext =
+        memchr(request->status_line.URI.ptr, '.', request->status_line.URI.len);
     if (ext) {
-      if (hashmap_get(rtr->public_directory_hmap, request->status_line.URI.ptr)) {
+      if (hashmap_get(rtr->public_directory_hmap, request->status_line.URI)) {
         sds path = sdsnewlit("assets/public");
-        path = sdscatsds(path, request->status_line.URI);
+        path = sdscatlen(path, request->status_line.URI.ptr,
+                         request->status_line.URI.len);
         prep_route_callback_send_file(client_fd, path);
       }
     }
@@ -187,9 +192,10 @@ void router_handle_request(router_t *rtr, request_t *request, int client_fd) {
 
   // 2. Check against dynamic registered routes
   if (rtr && rtr->routing_table) {
+    sds URI_sds = svtosds(request->status_line.URI);
     pt_fn handler =
         trie_find_handler(rtr->routing_table, request->status_line.method,
-                          request->status_line.URI);
+                          URI_sds);
 
     protothread_state *state = cmem_alloc(sizeof(protothread_state));
     state->resume_label = nullptr;

@@ -4,13 +4,12 @@ A high performance webserver made for linux first, should eventually also be abl
 
 ## TODO
 
-- finish the refactor to use sds, also do sanity and cleanup passes over hmap and LRU_cache
-  - rework the trie
+- finish the string-handling refactor, see conventions.
+- rework conventions to be header-based, alias to char*, retrieve the len through a method.
 - finish transitioning types to be _t affixed
 - finish io_uring state machine
 - use GnuTLS for the SSL handshake
 - Uploading/Downloading Files
-- look into this: [sds zero-copy append from syscalls](https://github.com/antirez/sds#zero-copy-append-from-syscalls)
 
 ## NOTE
 
@@ -19,29 +18,22 @@ A high performance webserver made for linux first, should eventually also be abl
 - Entity / Content Details: Content-Type, Content-Length, Content-Encoding
 
 ## Prerequisites
-## Rambling
-So every uring submission gets an protothread_context, at the end it calls into said function with the state, the context includes an optional struct that can store locals (use X macros for that, this will allow for precompilation size calcualtions)
 - CMake (going to transition to custom build system similar to nob.h)
 - clang
 - Platform (Linux only)
 
 ## Features
-
-A prerelease version is(was) working!
-
 - Can host a dynamic website
-- Only allows for GET requests## Rambling
-So every uring submission gets an protothread_context, at the end it calls into said function with the state, the context includes an optional struct that can store locals (use X macros for that, this will allow for precompilation size calcualtions)
-
-### Upcoming
-
-- filesystem
-- updated filesystem and request handling with io_uri## Rambling
-So every uring submission gets an protothread_context, at the end it calls into said function with the state, the context includes an optional struct that can store locals (use X macros for that, this will allow for precompilation size calcualtions)ng
+- Only allows for GET requests
 
 ## Benchmark (currently removed)
 
 For a report to be created all unit tests must have passed as well as the smoke test. Specific stats are for a peak load test with the arguments seen in the report. Note that key changes since the last report are included.
+
+## Conventions
+
+- Use sds internally, and sv_t for external facing portions/interfaces.
+- All internal types are _t affixed.
 
 ## Structure
 
@@ -55,8 +47,7 @@ The router handles routing based on the parsing function it requests the data to
 
 The server handles network, and general IO. (A lot.)
 
-### Request## Rambling
-So every uring submission gets an protothread_context, at the end it calls into said function with the state, the context includes an optional struct that can store locals (use X macros for that, this will allow for precompilation size calcualtions)
+### Request
 
 An request is an internal structure representing an request, that can be parsed.
 
@@ -67,8 +58,6 @@ An response is an internal structure representing an response, that can be seria
 ## References
 
 Shoutout to the following people who's work has allowed for this project to be possible:
-## Rambling
-So every uring submission gets an protothread_context, at the end it calls into said function with the state, the context includes an optional struct that can store locals (use X macros for that, this will allow for precompilation size calcualtions)
 - Travis Vroman
 - Nir Lichtman
 - Jacob Sorber

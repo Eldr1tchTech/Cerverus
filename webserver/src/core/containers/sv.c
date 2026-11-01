@@ -16,7 +16,3 @@ void sv_destroy(sv_t *sv) {
   sv->len = 0;
   cmem_free(sv);
 }
-
-static inline bool sv_eq(sv_t sv, const char *str, size_t len) {
-  return (sv.len == len) && memcmp(sv.ptr, str, len) == 0;
-}

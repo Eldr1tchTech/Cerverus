@@ -27,6 +27,8 @@ static inline int sdscmplitlen(const sds s, lit_t lit, size_t litlen) {
 
 #define sdseqlit(s, lit) (sdscmplit((s), lit) == 0)
 
+#define svtosds(sv) sdsnewlen(sv.ptr, sv.len)
+
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;

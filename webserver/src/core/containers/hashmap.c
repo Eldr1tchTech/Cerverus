@@ -1,13 +1,16 @@
 #include "hashmap.h"
 
+#include "core/containers/sv.h"
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
+#include "core/vendor/sds.h"
+#include "defines.h"
 #include <stddef.h>
 
-size_t hash_fnv1a(sds key) {
+size_t hash_fnv1a(sv_t key) {
   size_t hash = 14695981039346656037ULL;
-  for (size_t i = 0; i < sdslen(key); i++) {
-    hash ^= (unsigned char)(key[i]);
+  for (size_t i = 0; i < key.len; i++) {
+    hash ^= (unsigned char)(key.ptr[i]);
     hash *= 1099511628211ULL;
   }
 
@@ -47,17 +50,17 @@ void hashmap_destroy(hashmap *hmap) {
   cmem_free(hmap);
 }
 
-bool hashmap_set(hashmap *hmap, sds key, void *element) {
+bool hashmap_set(hashmap *hmap, sv_t key, void *element) {
   size_t start = hmap->hash(key) % hmap->size;
   for (size_t i = 0; i < hmap->size; i++) {
     hashmap_entry *curr_entry =
         hashmap_get_entry(hmap, (start + i) % hmap->size);
     if (curr_entry->exists || curr_entry->is_tombstone) {
-      if (curr_entry->exists && sdscmp(curr_entry->key, key) == 0) {
+      if (curr_entry->exists && _strcmp(curr_entry->key, sdslen(curr_entry->key), key.ptr, key.len) == 0) {
         cmem_mcpy(curr_entry->data, element, hmap->stride);
         if (curr_entry->key)
           sdsfree(curr_entry->key);
-        curr_entry->key = sdsdup(key);
+        curr_entry->key = sdsnewlen(key.ptr, key.len);
         curr_entry->exists = true;
         return true;
       }
@@ -66,20 +69,20 @@ bool hashmap_set(hashmap *hmap, sds key, void *element) {
     cmem_mcpy(curr_entry->data, element, hmap->stride);
     if (curr_entry->key)
       sdsfree(curr_entry->key);
-    curr_entry->key = sdsdup(key);
+    curr_entry->key = sdsnewlen(key.ptr, key.len);;
     curr_entry->exists = true;
     return true;
   }
   return false;
 }
 
-void *hashmap_get(hashmap *hmap, sds key) {
+void *hashmap_get(hashmap *hmap, sv_t key) {
   size_t start = hmap->hash(key) % hmap->size;
   for (size_t i = 0; i < hmap->size; i++) {
     hashmap_entry *curr_entry =
         hashmap_get_entry(hmap, (start + i) % hmap->size);
     if (curr_entry->exists || curr_entry->is_tombstone) {
-      if (curr_entry->exists && sdscmp(curr_entry->key, key) == 0) {
+      if (curr_entry->exists && _strcmp(curr_entry->key, sdslen(curr_entry->key), key.ptr, key.len) == 0) {
         return curr_entry->data;
       }
       continue;
@@ -96,7 +99,7 @@ hashmap *hashmap_rehash(hashmap *hmap) {
   for (size_t i = 0; i < hmap->size; i++) {
     curr_entry = hashmap_get_entry(hmap, i);
     if (curr_entry->exists) {
-      hashmap_set(new_hmap, curr_entry->key, curr_entry->data);
+      hashmap_set(new_hmap, (sv_t){.ptr = curr_entry->key, .len = sdslen(curr_entry->key)}, curr_entry->data);
     }
   }
 
@@ -105,13 +108,13 @@ hashmap *hashmap_rehash(hashmap *hmap) {
   return new_hmap;
 }
 
-bool hashmap_delete(hashmap *hmap, const sds key) {
+bool hashmap_delete(hashmap *hmap, const sv_t key) {
   size_t start = hmap->hash(key) % hmap->size;
   for (size_t i = 0; i < hmap->size; i++) {
     hashmap_entry *curr_entry =
         hashmap_get_entry(hmap, (start + i) % hmap->size);
     if (curr_entry->exists || curr_entry->is_tombstone) {
-      if (curr_entry->exists && sdscmp(curr_entry->key, key) == 0) {
+      if (curr_entry->exists && _strcmp(curr_entry->key, sdslen(curr_entry->key), key.ptr, key.len) == 0) {
         cmem_zmem(curr_entry, sizeof(hashmap_entry) + hmap->stride);
         curr_entry->is_tombstone = true;
         return true;

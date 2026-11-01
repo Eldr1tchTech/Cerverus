@@ -1,8 +1,10 @@
 
+#include "core/containers/sv.h"
 #include "core/util/protothread.h"
 #include "core/vendor/sds.h"
 #include "defines.h"
 #include "network/IO/async_io.h"
+#include "network/network_util.h"
 #include <core/memory/cmem.h>
 #include <core/util/logger.h>
 #include <core/util/util.h>
@@ -12,6 +14,7 @@
 #include <network/server.h>
 
 #include <fcntl.h>
+#include <string.h>
 #include <sys/socket.h>
 
 #include <core/containers/doubly_linked_list.h>
@@ -21,9 +24,9 @@
 // appropriate information on to the handler
 typedef struct test_locals {
   int client_fd;
-  request *req;
+  request_t *req;
   FILE file;
-  response *res;
+  response_t *res;
 } test_locals;
 
 void route_callback_test(protothread_state *state) {
@@ -52,18 +55,16 @@ void route_callback_test(protothread_state *state) {
 
   // TODO: Make this more user-friendly
   // Content-Type
-  sds str_temp = sdsdup(locals->file.name);
-  sds str_type = str_split_lit(str_temp, ".");
-  header h = {.name = sdsnewlit("Content-Type"),
-              .value = content_type_val_helper(str_type)};
+  char *ext = memchr(locals->file.name, '.', sdslen(locals->file.name));
+  header_t h = {
+      .sds = {.name = sdsnewlit("Content-Type"),
+              .value = sdsnew(content_type_val_helper((sv_t){
+                  .ptr = ext + 1, .len = ext - locals->file.name - 1}))}};
   response_add_header(locals->res, h);
-  sds_free(str_type);
-  sds_free(str_temp);
 
   // Content-Length
-  h.name = sdsnewlit("Content-Length");
-  h.value = sdsempty();
-  str_cat_u64(h.value, locals->file.statx_buff.stx_size);
+  h.sds.name = sdsnewlit("Content-Length");
+  h.sds.value = sdsfromlonglong(locals->file.statx_buff.stx_size);
   response_add_header(locals->res, h);
 
   // Date
@@ -88,10 +89,10 @@ int main() {
 
   // Router setup
   router_config rtr_conf = {};
-  router *rtr = router_create(&rtr_conf);
+  router_t *rtr = router_create(&rtr_conf);
 
   sds temp_str = sdsnewlit("/test");
-  route *rt_test = route_create(http_method_get, temp_str, route_callback_test);
+  route_t *rt_test = route_create(http_method_get, temp_str, route_callback_test);
 
   router_add_route(rtr, rt_test);
 

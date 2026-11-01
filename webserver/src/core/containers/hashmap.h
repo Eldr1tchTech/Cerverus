@@ -1,8 +1,9 @@
 #pragma once
 
+#include "core/containers/sv.h"
 #include "core/vendor/sds.h"
 
-typedef size_t (*hash_fn)(sds key);
+typedef size_t (*hash_fn)(sv_t key);
 
 typedef struct hashmap_entry {
   bool exists;
@@ -30,6 +31,6 @@ void hashmap_destroy(hashmap *hmap);
  */
 hashmap *hashmap_rehash(hashmap *hmap);
 
-bool hashmap_set(hashmap *hmap, sds key, void *element);
-void *hashmap_get(hashmap *hmap, sds key);
-bool hashmap_delete(hashmap *hmap, sds key);
+bool hashmap_set(hashmap *hmap, sv_t key, void *element);
+void *hashmap_get(hashmap *hmap, sv_t key);
+bool hashmap_delete(hashmap *hmap, sv_t key);

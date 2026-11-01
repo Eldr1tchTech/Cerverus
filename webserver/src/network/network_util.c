@@ -1,28 +1,27 @@
 #include "network_util.h"
 
+#include "core/containers/sv.h"
 #include "core/util/logger.h"
 #include "core/vendor/sds.h"
 #include "defines.h"
 
-lit_t content_type_val_helper(sds ext) {
-  if (ext) {
-
+lit_t content_type_val_helper(sv_t ext) {
     // TODO: write a helper function for the lit wrapper here
-    if (sdscmplit(ext, "html")) {
+    if (svcmplit(ext, "html")) {
       return "text/html";
-    } else if (sdscmplit(ext, "css")) {
+    } else if (svcmplit(ext, "css")) {
       return "text/css";
-    } else if (sdscmplit(ext, "jpg") || sdscmplit(ext, "jpeg")) {
+    } else if (svcmplit(ext, "jpg") || svcmplit(ext, "jpeg")) {
       return "image/jpeg";
-    } else if (sdscmplit(ext, "png")) {
+    } else if (svcmplit(ext, "png")) {
       return "image/png";
-    } else if (sdscmplit(ext, "gif")) {
+    } else if (svcmplit(ext, "gif")) {
       return "image/gif";
-    } else if (sdscmplit(ext, "webp")) {
+    } else if (svcmplit(ext, "webp")) {
       return "image/webp";
-    } else if (sdscmplit(ext, "svg")) {
+    } else if (svcmplit(ext, "svg")) {
       return "image/svg+xml";
-    } else if (sdscmplit(ext, "ico")) {
+    } else if (svcmplit(ext, "ico")) {
       return "image/x-icon";
     } else {
       LOG_ERROR("content_type_val_helper - Currently unsuported file "
@@ -30,7 +29,6 @@ lit_t content_type_val_helper(sds ext) {
                 ext);
       return nullptr;
     }
-  }
   LOG_ERROR("content_type_val_helper - Please provide a valid char* for ext.");
   return nullptr;
 }
