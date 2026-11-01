@@ -55,12 +55,12 @@ typedef struct logical_async_context {
   };
 } logical_async_context;
 
-typedef struct FILE {
+typedef struct file_t {
   int fd;
   sds name;
   sds path;
   struct statx statx_buff;
-} FILE;
+} file_t;
 
 // NOTE: If not appropriately called, may cause weird crashes.
 void async_io_setup();
@@ -101,7 +101,7 @@ void async_io_process();
 
 typedef struct open_file_locals {
   sds path;
-  FILE *file;
+  file_t *file;
 } open_file_locals;
 
 void async_io_open_file(protothread_state *pt_state);

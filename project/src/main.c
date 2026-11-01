@@ -25,7 +25,7 @@
 typedef struct test_locals {
   int client_fd;
   request_t *req;
-  FILE file;
+  file_t file;
   response_t *res;
 } test_locals;
 
@@ -72,7 +72,7 @@ void route_callback_test(protothread_state *state) {
   // Send headers
   sds raw_res = response_serialize(locals->res); // persistent across await
   PT_WAIT(state, async_io_send_buffer(raw_res));
-  sds_free(raw_res);
+  sdsfree(raw_res);
 
   // Send file
   PT_WAIT(state, async_io_sendfile(locals->file.fd));
@@ -108,6 +108,6 @@ int main() {
 
   server_run(srv);
 
-  sds_free(temp_str);
+  sdsfree(temp_str);
   async_io_shutdown();
 }

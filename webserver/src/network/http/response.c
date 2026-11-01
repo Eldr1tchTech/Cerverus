@@ -38,14 +38,14 @@ void response_destroy(response_t* res) {
 
   // BODY
   darray_foreach(res->headers, elem) {
-    sds_free(elem->sds.name);
-    sds_free(elem->sds.value);
+    sdsfree(elem->sds.name);
+    sdsfree(elem->sds.value);
   }
   darray_destroy(res->headers);
 
   // BODY
   if (res->body) {
-    sds_free(res->body);
+    sdsfree(res->body);
   }
 }
 

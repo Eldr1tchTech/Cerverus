@@ -2,8 +2,8 @@
 
 #include "core/vendor/sds.h"
 #include <string.h>
+#include <stddef.h>
 
-typedef unsigned long size_t;
 typedef char *cstr_t;      // C string
 typedef const char *lit_t; // string literal
 
@@ -11,7 +11,7 @@ typedef const char *lit_t; // string literal
 
 #define sdsnewlit(lit) sdsnewlen("" lit, litlen(lit))
 
-static inline int _strcmp(const cstr_t str1, const size_t len1, const cstr_t str2, const size_t len2) {
+static inline int _strcmp(const char* str1, const size_t len1, const char* str2, const size_t len2) {
   size_t minlen = len1 < len2 ? len1 : len2;
   int cmp = memcmp(str1, str2, minlen);
   if (cmp == 0)
@@ -28,6 +28,7 @@ static inline int sdscmplitlen(const sds s, lit_t lit, size_t litlen) {
 #define sdseqlit(s, lit) (sdscmplit((s), lit) == 0)
 
 #define svtosds(sv) sdsnewlen(sv.ptr, sv.len)
+#define sdstosv(sds) (sv_t){.ptr = sds, .len = sdslen(sds)}
 
 typedef unsigned char u8;
 typedef unsigned short u16;

@@ -21,7 +21,7 @@ void trie_node_destroy(trie_node_t *t_node) {
 
   darray_destroy(t_node->children);
   if (t_node->segment.path_segment) {
-    sds_free(t_node->segment.path_segment);
+    sdsfree(t_node->segment.path_segment);
   }
   cmem_free(t_node);
 }

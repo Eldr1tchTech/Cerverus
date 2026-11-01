@@ -53,7 +53,7 @@ void router_add_route(router_t *rtr, route_t *rt) {
 typedef struct send_file_locals {
   int client_fd;
   sds path;
-  FILE file;
+  file_t file;
   response_t *res;
   sds raw_res;
 } send_file_locals;
@@ -84,7 +84,7 @@ void route_callback_send_file(protothread_state *state) {
   // TODO: Make this more user-friendly
   // Content-Type
   char *extension = memchr(locals->file.name, '.', sdslen(locals->file.name));
-  if (extension = nullptr)
+  if (extension == nullptr)
     LOG_ERROR("no extention present.");
   sv_t type = {.ptr = extension + 1, .len = extension - locals->file.name - 1};
   header_t h = {.sds = {.name = sdsnewlit("Content-Type"),

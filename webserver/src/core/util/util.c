@@ -8,12 +8,6 @@
 #include <dirent.h>
 #include <fcntl.h>
 
-void darray_destroy_string_helper(darray darr) {
-  sds *_darr = darr;
-  darray_foreach(_darr, element) { sds_free(element); }
-  darray_destroy(darr);
-}
-
 void recursive_walk(DIR *dir, const sds prefix, darray files_darr) {
   struct dirent *entry;
   while ((entry = readdir(dir)) != nullptr) {
@@ -23,7 +17,7 @@ void recursive_walk(DIR *dir, const sds prefix, darray files_darr) {
       sds temp_str = sdsnew(entry->d_name);
       sds new_entry = sdsdup(prefix);
       new_entry = sdscatsds(new_entry, temp_str);
-      sds_free(temp_str);
+      sdsfree(temp_str);
       files_darr = darray_add(files_darr, &new_entry);
     } else if (entry->d_type == DT_DIR) {
       int fd = openat(dirfd(dir), entry->d_name, O_RDONLY | O_DIRECTORY);
@@ -32,14 +26,14 @@ void recursive_walk(DIR *dir, const sds prefix, darray files_darr) {
       sds sub_prefix = sdsdup(prefix);
       sds temp_str = sdsnew(entry->d_name);
       sub_prefix = sdscatsds(sub_prefix, temp_str);
-      sds_free(temp_str);
+      sdsfree(temp_str);
       temp_str = sdsnewlit("/");
       sub_prefix = sdscatsds(sub_prefix, temp_str);
-      sds_free(temp_str);
+      sdsfree(temp_str);
 
       struct dirent *sub_entry;
       recursive_walk(sub_dir, sub_prefix, files_darr);
-      sds_free(sub_prefix);
+      sdsfree(sub_prefix);
 
       closedir(sub_dir);
     }
@@ -53,7 +47,7 @@ darray _list_files(const cstr_t dir_path) {
 
   sds prefix = sdsnewlit("/");
   recursive_walk(dir, prefix, files_darr);
-  sds_free(prefix);
+  sdsfree(prefix);
 
   closedir(dir);
 

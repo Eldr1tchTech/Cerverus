@@ -1,5 +1,6 @@
 #include "route.h"
 
+#include "core/containers/darray.h"
 #include "core/memory/cmem.h"
 #include "core/util/util.h"
 #include "core/vendor/sds.h"
@@ -27,7 +28,9 @@ route_t *route_create(http_method method, sds URI, pt_fn callback) {
 }
 
 void route_destroy(route_t *rt) {
-  darray_destroy_string_helper(rt->segments_darr);
+  darray_foreach(rt->segments_darr, elem) {
+    sdsfree(elem->path_segment);
+  }
   darray_destroy(rt->segments_darr);
   cmem_free(rt);
 }

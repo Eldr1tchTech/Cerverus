@@ -6,6 +6,7 @@
 #include "core/util/profiler.h"
 #include "core/util/util.h"
 #include "core/vendor/sds.h"
+#include "defines.h"
 #include "network/http/request.h"
 
 #include <arpa/inet.h>
@@ -63,7 +64,7 @@ void async_io_setup() {
   }
 
   // file_cache setup
-  state.file_cache = LRU_cache_create(16, sizeof(FILE), file_eviction_handler);
+  state.file_cache = LRU_cache_create(16, sizeof(file_t), file_eviction_handler);
 }
 
 void async_io_shutdown() {
@@ -318,21 +319,21 @@ void async_io_open_file(protothread_state *pt_state) {
 
   // Cache check to maybe skip async
   // Figure out how to not do this everytime?????
-  FILE *temp_file = LRU_cache_get(state.file_cache, locals->path);
+  file_t *temp_file = LRU_cache_get(state.file_cache, sdstosv(locals->path));
   if (temp_file != nullptr) {
-    cmem_mcpy(locals->file, temp_file, sizeof(FILE));
+    cmem_mcpy(locals->file, temp_file, sizeof(file_t));
     return;
   }
 
   PT_BEGIN(pt_state, async_io_open_file);
 
   // Fill out synchronous parts
-  locals->file = cmem_alloc(sizeof(FILE));
+  locals->file = cmem_alloc(sizeof(file_t));
   int count;
   sds *path_shards = sdssplitlen(locals->path, sdslen(locals->path), "/", 1,
                                  &count); // TODO: fiinish this
   locals->file->name = sdsdup(path_shards[*darray_get_length(path_shards) - 1]);
-  darray_destroy_string_helper(path_shards);
+  sdsfreesplitres(path_shards, count);
 
   PT_WAIT(pt_state,
           handle_openat_submission(locals->path, &locals->file->fd, pt_state));
@@ -341,7 +342,7 @@ void async_io_open_file(protothread_state *pt_state) {
 
   // Add to cache
   LRU_cache_add(
-      state.file_cache, locals->path,
+      state.file_cache, sdstosv(locals->path),
       locals->file); // NOTE: may be necessary to adopt a facotry-like approach
                      // for duplicating complex structs, especially if they
                      // include strings and the like
