@@ -19,7 +19,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define TEMP_CONNECTIONS 16
 #define SPLICE_MAX_SIZE (64 * 1024)
 #define RECV_CHUNK (4 * 1024)
 #define MAX_REQUEST (16 * 1024)
@@ -36,7 +35,6 @@ typedef struct uring_state {
   LRU_cache *file_cache;
   struct io_uring ring;
   int srv_fd;
-  u64 connections;
   router_t *rtr;
 } uring_state;
 
@@ -60,7 +58,7 @@ static void op_submit(struct io_uring_sqe *sqe, logical_async_context *ctx) {
   io_uring_submit(&state.ring);
 }
 
-static void op_exit(logical_async_context *ctx, int res) {
+static void op_exit(logical_async_context *ctx) {
   protothread_state *pt = ctx->pt;
   cmem_free(ctx);
   if (pt)
@@ -70,7 +68,7 @@ static void op_exit(logical_async_context *ctx, int res) {
 #define OP_CHECK(cqe, ctx, what)                                               \
   if ((cqe)->res < 0) {                                                        \
     LOG_ERROR(what " - %s", strerror(-(cqe)->res));                            \
-    op_exit((ctx), (cqe)->res);                                                \
+    op_exit((ctx));                                                            \
     return;                                                                    \
   }
 
@@ -80,8 +78,6 @@ void file_eviction_handler(void *fd) {
 
 // TODO: pass uring config
 void async_io_setup() {
-  state.connections = TEMP_CONNECTIONS;
-
   // uring setup
   struct io_uring_params params;
   cmem_zmem(&params, sizeof(params));
@@ -127,12 +123,8 @@ void handle_accept_completion(struct io_uring_cqe *cqe,
                               logical_async_context *ctx) {
   OP_CHECK(cqe, ctx, "handle_accept_completion");
 
-  state.connections--;
   handle_recv_submission(cqe->res, nullptr);
-
-  if (state.connections > 0) {
-    handle_accept_submission();
-  }
+  handle_accept_submission();
 }
 
 void handle_recv_submission(int client_fd, recv_context *recv_ctx) {
@@ -193,12 +185,12 @@ void handle_recv_completion(struct io_uring_cqe *cqe,
 void handle_openat_submission(sds path, int *fd, protothread_state *pt) {
   struct io_uring_sqe *sqe = io_uring_get_sqe_wrapper();
 
-  logical_async_context *ctx = new_ctx(uring_op_type_accept, pt);
+  logical_async_context *ctx = new_ctx(uring_op_type_openat, pt);
   ctx->openat.fd = fd;
 
   LOG_INFO("openat path: %.*s", sdslen(path), path);
 
-  io_uring_prep_openat(sqe, AT_FDCWD, path, 0, O_RDONLY);
+  io_uring_prep_openat(sqe, AT_FDCWD, path, O_RDONLY, 0);
   op_submit(sqe, ctx);
 }
 
@@ -234,8 +226,11 @@ void handle_send_completion(struct io_uring_cqe *cqe,
     return;
   }
 
+  protothread_state *pt = ctx->pt;
   sdsfree(ctx->send.buffer);
-  // TODO: Revisit
+  cmem_free(ctx);
+  if (pt)
+    pt->self(pt);
 }
 
 void handle_splice_submission(int *consumed, int fd_in, int64_t off_in,
@@ -312,7 +307,7 @@ void handle_splice_all_completion(struct io_uring_cqe *cqe,
 void handle_close_submission(int fd, protothread_state *pt) {
   struct io_uring_sqe *sqe = io_uring_get_sqe_wrapper();
 
-  logical_async_context *ctx = new_ctx(uring_op_type_send, pt);
+  logical_async_context *ctx = new_ctx(uring_op_type_close, pt);
 
   io_uring_prep_close(sqe, fd);
   op_submit(sqe, ctx);
@@ -322,9 +317,7 @@ void handle_close_completion(struct io_uring_cqe *cqe,
                              logical_async_context *ctx) {
   // NOTE: I don't think close can actually fail...
   OP_CHECK(cqe, ctx, "handle_close_completion");
-  protothread_state *pt = ctx->pt;
-  cmem_free(ctx);
-  pt->self(pt);
+  op_exit(ctx);
 }
 
 void handle_statx_submission(int fd, struct statx *statx_buff,
@@ -379,6 +372,7 @@ void async_io_open_file(protothread_state *pt) {
   file_t *temp_file = LRU_cache_get(state.file_cache, sdstosv(locals->path));
   if (temp_file != nullptr) {
     cmem_mcpy(locals->file, temp_file, sizeof(file_t));
+    pt->caller->self(pt->caller);
     return;
   }
 
