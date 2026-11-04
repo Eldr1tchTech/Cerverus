@@ -124,7 +124,7 @@ void route_callback_send_file(protothread_state *state) {
   cmem_free(locals->sendfile_state->locals);
   cmem_free(locals->sendfile_state);
 
-  PT_WAIT(state, handle_close_submission(locals->client_fd));
+  PT_WAIT(state, handle_close_submission(locals->client_fd, state));
 
   // Cleanup
   cmem_free(locals);
@@ -165,7 +165,7 @@ void route_callback_send_404(protothread_state *state) {
   cmem_free(send_buffer_state);
   sdsfree(locals->raw_res);
 
-  PT_WAIT(state, handle_close_submission(locals->client_fd));
+  PT_WAIT(state, handle_close_submission(locals->client_fd, state));
 
   // Cleanup
   cmem_free(locals);

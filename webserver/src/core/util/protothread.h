@@ -9,10 +9,9 @@ typedef void (*pt_fn)(struct protothread_state *state);
 typedef struct protothread_state {
   void *resume_label;
   pt_fn self;
-
   struct protothread_state *caller;
-
   void *locals;
+  int error;
 } protothread_state;
 
 // Aliasing

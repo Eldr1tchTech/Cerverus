@@ -8,15 +8,19 @@
 #include "network/network_types.inl"
 #include "network/routing/router.h"
 
+void async_io_setup();
+void async_io_shutdown();
+
+void async_io_update_values(int server_fd, router_t *rtr);
+
+#define URING_OPS(X) \
+  X(accept) X(recv) X(openat) X(send) X(close) X(statx) X(splice) X(splice_all)
+
 typedef enum uring_op_type {
-  uring_op_type_accept,
-  uring_op_type_recv,
-  uring_op_type_openat,
-  uring_op_type_send,
-  uring_op_type_close,
-  uring_op_type_statx,
-  uring_op_type_splice,
-  uring_op_type_splice_all,
+#define X(n) uring_op_type_##n,
+  URING_OPS(X)
+#undef X
+  uring_op_type_count,
 } uring_op_type;
 
 typedef struct file_t {
@@ -46,7 +50,7 @@ typedef struct splice_all_context {
 
 typedef struct logical_async_context {
   uring_op_type op_type;
-  protothread_state *pt_state;
+  protothread_state *pt;
   union {
     recv_context recv;
     struct {
@@ -70,64 +74,43 @@ typedef struct logical_async_context {
   };
 } logical_async_context;
 
-void async_io_setup();
-void async_io_shutdown();
+// after logical_async_context is defined:
+#define X(n) void handle_##n##_completion(struct io_uring_cqe *, logical_async_context *);
+URING_OPS(X)
+#undef X
 
-void async_io_update_values(int server_fd, router_t *rtr);
+void async_io_process();
 
 void handle_accept_submission();
-void handle_accept_completion(struct io_uring_cqe *cqe,
-                              logical_async_context *ctx);
-
 void handle_recv_submission(int client_fd, recv_context *recv_ctx);
-void handle_recv_completion(struct io_uring_cqe *cqe,
-                            logical_async_context *ctx);
-
-void handle_openat_submission(sds path, int *fd, protothread_state *pt_state);
-void handle_openat_completion(struct io_uring_cqe *cqe,
-                              logical_async_context *ctx);
-
+void handle_openat_submission(sds path, int *fd, protothread_state *pt);
 void handle_statx_submission(int fd, struct statx *statx_buff,
-                             protothread_state *pt_state);
-void handle_statx_completion(struct io_uring_cqe *cqe,
-                             logical_async_context *ctx);
-
+                             protothread_state *pt);
 void handle_send_submission(sds buffer, int client_fd,
-                            protothread_state *pt_state);
-void handle_send_completion(struct io_uring_cqe *cqe,
-                            logical_async_context *ctx);
-
+                            protothread_state *pt);
 void handle_splice_submission(int *consumed, int fd_in, int64_t off_in,
                               int fd_out, int64_t off_out, unsigned int nbytes,
                               unsigned int splice_flags,
-                              protothread_state *pt_state);
-void handle_splice_completion(struct io_uring_cqe *cqe,
-                              logical_async_context *ctx);
-
+                              protothread_state *pt);
 void handle_splice_all_submission(splice_all_context splice_all_ctx,
-                                  protothread_state *pt_state);
-void handle_splice_all_completion(struct io_uring_cqe *cqe,
-                                  logical_async_context *ctx);
+                                  protothread_state *pt);
+void handle_close_submission(int fd, protothread_state* pt);
 
-void handle_close_submission(int fd);
-void handle_close_completion(struct io_uring_cqe *cqe,
-                             logical_async_context *ctx);
 
-void async_io_process();
 
 typedef struct open_file_locals {
   sds path;
   file_t *file;
 } open_file_locals;
 
-void async_io_open_file(protothread_state *pt_state);
+void async_io_open_file(protothread_state *pt);
 
 typedef struct send_buffer_locals {
   sds buffer;
   int client_fd;
 } send_buffer_locals;
 
-void async_io_send_buffer(protothread_state *pt_state);
+void async_io_send_buffer(protothread_state *pt);
 
 typedef struct sendfile_locals {
   int client_fd;
@@ -135,7 +118,7 @@ typedef struct sendfile_locals {
   splice_all_context splice_ctx;
 } sendfile_locals;
 
-void async_io_sendfile(protothread_state *pt_state);
+void async_io_sendfile(protothread_state *pt);
 
 #define ASYNC_CALL(name, init_locals)                                          \
   do {                                                                         \

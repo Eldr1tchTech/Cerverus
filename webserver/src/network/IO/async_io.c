@@ -24,6 +24,14 @@
 #define RECV_CHUNK (4 * 1024)
 #define MAX_REQUEST (16 * 1024)
 
+typedef void (*completion_fn)(struct io_uring_cqe *, logical_async_context *);
+
+static const completion_fn completion_table[uring_op_type_count] = {
+#define X(n) [uring_op_type_##n] = handle_##n##_completion,
+    URING_OPS(X)
+#undef X
+};
+
 typedef struct uring_state {
   LRU_cache *file_cache;
   struct io_uring ring;
@@ -42,7 +50,33 @@ struct io_uring_sqe *io_uring_get_sqe_wrapper() {
   return sqe;
 }
 
-void file_eviction_handler(void *fd) { handle_close_submission(*((int *)fd)); }
+static logical_async_context *new_ctx(uring_op_type op_type,
+                                      protothread_state *pt) {
+  return cmem_new(logical_async_context, .op_type = op_type, .pt = pt);
+}
+
+static void op_submit(struct io_uring_sqe *sqe, logical_async_context *ctx) {
+  io_uring_sqe_set_data(sqe, ctx);
+  io_uring_submit(&state.ring);
+}
+
+static void op_exit(logical_async_context *ctx, int res) {
+  protothread_state *pt = ctx->pt;
+  cmem_free(ctx);
+  if (pt)
+    pt->self(pt);
+}
+
+#define OP_CHECK(cqe, ctx, what)                                               \
+  if ((cqe)->res < 0) {                                                        \
+    LOG_ERROR(what " - %s", strerror(-(cqe)->res));                            \
+    op_exit((ctx), (cqe)->res);                                                \
+    return;                                                                    \
+  }
+
+void file_eviction_handler(void *fd) {
+  handle_close_submission(*((int *)fd), nullptr);
+}
 
 // TODO: pass uring config
 void async_io_setup() {
@@ -81,39 +115,30 @@ void async_io_update_values(int server_fd, router_t *rtr) {
 }
 
 void handle_accept_submission() {
+  logical_async_context *ctx = new_ctx(uring_op_type_accept, nullptr);
+
   struct io_uring_sqe *sqe = io_uring_get_sqe_wrapper();
   io_uring_prep_accept(sqe, state.srv_fd, nullptr, nullptr, 0);
 
-  logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
-  ctx->op_type = uring_op_type_accept;
-
-  io_uring_sqe_set_data(sqe, ctx);
-
-  io_uring_submit(&state.ring);
+  op_submit(sqe, ctx);
 }
 
 void handle_accept_completion(struct io_uring_cqe *cqe,
                               logical_async_context *ctx) {
-  LOG_INFO("received an accept request.");
-  if (cqe->res < 0) {
-    LOG_ERROR("handle_accept_completion - accept failed: %d", cqe->res);
-  } else {
-    // TODO: Remember to somehow reincrement this at the correct point later in
-    // the code.
-    state.connections--;
-    handle_recv_submission(cqe->res, nullptr);
-  }
+  OP_CHECK(cqe, ctx, "handle_accept_completion");
+
+  state.connections--;
+  handle_recv_submission(cqe->res, nullptr);
+
   if (state.connections > 0) {
     handle_accept_submission();
   }
 }
 
 void handle_recv_submission(int client_fd, recv_context *recv_ctx) {
-  struct io_uring_sqe *sqe = io_uring_get_sqe_wrapper();
+  logical_async_context *ctx = new_ctx(uring_op_type_recv, nullptr);
 
-  // TODO: maybe zero initialize
-  logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
-  ctx->op_type = uring_op_type_recv;
+  struct io_uring_sqe *sqe = io_uring_get_sqe_wrapper();
 
   if (recv_ctx) {
     ctx->recv = *recv_ctx;
@@ -127,12 +152,12 @@ void handle_recv_submission(int client_fd, recv_context *recv_ctx) {
   size_t len = sdslen(ctx->recv.buffer);
   io_uring_prep_recv(sqe, ctx->recv.client_fd, ctx->recv.buffer + len,
                      sdsavail(ctx->recv.buffer), 0);
-  io_uring_sqe_set_data(sqe, ctx);
-  io_uring_submit(&state.ring);
+  op_submit(sqe, ctx);
 }
 
 void handle_recv_completion(struct io_uring_cqe *cqe,
                             logical_async_context *ctx) {
+  // TODO: Revisit (not following schema)
   int bytes_read = cqe->res;
   if (bytes_read <= 0) {
     sdsfree(ctx->recv.buffer);
@@ -165,20 +190,16 @@ void handle_recv_completion(struct io_uring_cqe *cqe,
   router_handle_request(state.rtr, &ctx->recv.request, ctx->recv.client_fd);
 }
 
-void handle_openat_submission(sds path, int *fd, protothread_state *pt_state) {
+void handle_openat_submission(sds path, int *fd, protothread_state *pt) {
   struct io_uring_sqe *sqe = io_uring_get_sqe_wrapper();
 
-  logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
-  ctx->op_type = uring_op_type_openat;
+  logical_async_context *ctx = new_ctx(uring_op_type_accept, pt);
   ctx->openat.fd = fd;
-  ctx->pt_state = pt_state;
 
   LOG_INFO("openat path: %.*s", sdslen(path), path);
 
   io_uring_prep_openat(sqe, AT_FDCWD, path, 0, O_RDONLY);
-  io_uring_sqe_set_data(sqe, ctx);
-
-  io_uring_submit(&state.ring);
+  op_submit(sqe, ctx);
 }
 
 void handle_openat_completion(struct io_uring_cqe *cqe,
@@ -190,84 +211,65 @@ void handle_openat_completion(struct io_uring_cqe *cqe,
 
   *ctx->openat.fd = cqe->res;
 
-  ctx->pt_state->self(ctx->pt_state);
+  ctx->pt->self(ctx->pt);
 }
 
-void handle_send_submission(sds buffer, int client_fd,
-                            protothread_state *pt_state) {
+void handle_send_submission(sds buffer, int client_fd, protothread_state *pt) {
   struct io_uring_sqe *sqe = io_uring_get_sqe_wrapper();
 
-  logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
-  ctx->op_type = uring_op_type_send;
+  logical_async_context *ctx = new_ctx(uring_op_type_send, pt);
   ctx->send.client_fd = client_fd;
   ctx->send.buffer = buffer;
-  ctx->pt_state = pt_state;
 
   io_uring_prep_send(sqe, ctx->send.client_fd, ctx->send.buffer,
                      sdslen(ctx->send.buffer), 0);
-  io_uring_sqe_set_data(sqe, ctx);
-
-  io_uring_submit(&state.ring);
+  op_submit(sqe, ctx);
 }
 
 void handle_send_completion(struct io_uring_cqe *cqe,
                             logical_async_context *ctx) {
-  if (cqe->res < 0) {
-    LOG_ERROR("error?");
-    return;
-  }
+  OP_CHECK(cqe, ctx, "handle_send_completion");
 
   sdsrange(ctx->send.buffer, cqe->res, -1);
 
   if (sdslen(ctx->send.buffer) > 0) {
-    handle_send_submission(ctx->send.buffer, ctx->send.client_fd,
-                           ctx->pt_state);
+    handle_send_submission(ctx->send.buffer, ctx->send.client_fd, ctx->pt);
     return;
   }
 
   sdsfree(ctx->send.buffer);
-  ctx->pt_state->self(ctx->pt_state);
+  // TODO: Revisit
 }
 
 void handle_splice_submission(int *consumed, int fd_in, int64_t off_in,
                               int fd_out, int64_t off_out, unsigned int nbytes,
                               unsigned int splice_flags,
-                              protothread_state *pt_state) {
+                              protothread_state *pt) {
   struct io_uring_sqe *sqe = io_uring_get_sqe_wrapper();
 
-  logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
-  ctx->op_type = uring_op_type_splice;
+  logical_async_context *ctx = new_ctx(uring_op_type_splice, pt);
   ctx->splice.consumed = consumed;
-  ctx->pt_state = pt_state;
 
   io_uring_prep_splice(sqe, fd_in, off_in, fd_out, off_out, nbytes,
                        splice_flags);
 
-  io_uring_sqe_set_data(sqe, ctx);
-
-  io_uring_submit(&state.ring);
+  op_submit(sqe, ctx);
 }
 
 void handle_splice_completion(struct io_uring_cqe *cqe,
                               logical_async_context *ctx) {
-  if (cqe->res < 0) {
-    ctx->splice.consumed = nullptr;
-    LOG_ERROR("handle_splice_completion - %s", strerror(-cqe->res));
-    ctx->pt_state->self(ctx->pt_state);
-  }
+  OP_CHECK(cqe, ctx, "handle_splice_completion");
 
   *ctx->splice.consumed = cqe->res;
-  ctx->pt_state->self(ctx->pt_state);
+  ctx->pt->self(ctx->pt);
 }
 
 void handle_splice_all_submission(splice_all_context splice_all_ctx,
-                                  protothread_state *pt_state) {
+                                  protothread_state *pt) {
   // Setup ctx
   struct io_uring_sqe *sqe = io_uring_get_sqe_wrapper();
-  logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
-  ctx->op_type = uring_op_type_splice_all;
+  logical_async_context *ctx = new_ctx(uring_op_type_splice_all, pt);
   ctx->splice_all = splice_all_ctx;
-  ctx->pt_state = pt_state;
 
   if (ctx->splice_all.is_draining) {
     // Drain pipe
@@ -283,78 +285,70 @@ void handle_splice_all_submission(splice_all_context splice_all_ctx,
                          0);
   }
 
-  io_uring_sqe_set_data(sqe, ctx);
-
-  io_uring_submit(&state.ring);
+  op_submit(sqe, ctx);
 }
 
 void handle_splice_all_completion(struct io_uring_cqe *cqe,
                                   logical_async_context *ctx) {
-  if (cqe->res < 0) {
-    LOG_ERROR("handle_splice_all_completion - %s", strerror(-cqe->res));
-    ctx->pt_state->self(ctx->pt_state);
-  }
+  OP_CHECK(cqe, ctx, "handle_splice_all_completion");
 
   // Update ctx
   if (ctx->splice_all.is_draining) {
     ctx->splice_all.in_pipe -= cqe->res;
 
-    if (ctx->splice_all.in_pipe == ctx->splice_all.nbytes == 0) {
-      ctx->pt_state->self(ctx->pt_state);
+    if (ctx->splice_all.in_pipe == 0 && ctx->splice_all.nbytes == 0) {
+      ctx->pt->self(ctx->pt);
     } else {
       ctx->splice_all.is_draining = false;
-      handle_splice_all_submission(ctx->splice_all, ctx->pt_state);
+      handle_splice_all_submission(ctx->splice_all, ctx->pt);
+      return;
     }
   } else {
     ctx->splice_all.nbytes -= cqe->res;
     ctx->splice_all.in_pipe += cqe->res;
     ctx->splice_all.is_draining = true;
-    handle_splice_all_submission(ctx->splice_all, ctx->pt_state);
+    handle_splice_all_submission(ctx->splice_all, ctx->pt);
+    return;
   }
 }
 
-void handle_close_submission(int fd) {
+void handle_close_submission(int fd, protothread_state *pt) {
   struct io_uring_sqe *sqe = io_uring_get_sqe_wrapper();
 
-  logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
-  ctx->op_type = uring_op_type_close;
+  logical_async_context *ctx = new_ctx(uring_op_type_send, pt);
 
   io_uring_prep_close(sqe, fd);
-  io_uring_sqe_set_data(sqe, ctx);
-
-  io_uring_submit(&state.ring);
+  op_submit(sqe, ctx);
 }
 
 void handle_close_completion(struct io_uring_cqe *cqe,
                              logical_async_context *ctx) {
+  // NOTE: I don't think close can actually fail...
+  OP_CHECK(cqe, ctx, "handle_close_completion");
+  protothread_state *pt = ctx->pt;
   cmem_free(ctx);
+  pt->self(pt);
 }
 
 void handle_statx_submission(int fd, struct statx *statx_buff,
-                             protothread_state *pt_state) {
-  struct io_uring_sqe *sqe = io_uring_get_sqe_wrapper();
-
-  logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
-  ctx->op_type = uring_op_type_statx;
+                             protothread_state *pt) {
+  logical_async_context *ctx = new_ctx(uring_op_type_statx, pt);
   ctx->statx.statx_buff = statx_buff;
-  ctx->pt_state = pt_state;
 
+  struct io_uring_sqe *sqe = io_uring_get_sqe_wrapper();
   io_uring_prep_statx(sqe, fd, "", AT_EMPTY_PATH, STATX_ALL,
                       ctx->statx.statx_buff);
 
-  io_uring_sqe_set_data(sqe, ctx);
-
-  io_uring_submit(&state.ring);
+  op_submit(sqe, ctx);
 }
 
 void handle_statx_completion(struct io_uring_cqe *cqe,
                              logical_async_context *ctx) {
-  if (cqe->res < 0) {
-    LOG_ERROR("handle_statx_completion - statx failed");
-    return;
-  }
+  OP_CHECK(cqe, ctx, "handle_statx_completion");
 
-  ctx->pt_state->self(ctx->pt_state);
+  protothread_state *pt = ctx->pt;
+  cmem_free(ctx);
+  pt->self(pt);
 }
 
 void async_io_process() {
@@ -365,35 +359,10 @@ void async_io_process() {
   while (res == 0) {
     logical_async_context *ctx = (logical_async_context *)cqe->user_data;
 
-    switch (ctx->op_type) {
-    case uring_op_type_accept:
-      handle_accept_completion(cqe, ctx);
-      break;
-    case uring_op_type_recv:
-      handle_recv_completion(cqe, ctx);
-      break;
-    case uring_op_type_send:
-      handle_send_completion(cqe, ctx);
-      break;
-    case uring_op_type_openat:
-      handle_openat_completion(cqe, ctx);
-      break;
-    case uring_op_type_close:
-      handle_close_completion(cqe, ctx);
-      break;
-    case uring_op_type_statx:
-      handle_statx_completion(cqe, ctx);
-      break;
-    case uring_op_type_splice:
-      handle_splice_completion(cqe, ctx);
-      break;
-    case uring_op_type_splice_all:
-      handle_splice_all_completion(cqe, ctx);
-      break;
-    default:
-      LOG_ERROR("async_io_process - Unknown uring_op_type.");
-      break;
-    }
+    if (ctx->op_type >= uring_op_type_count)
+      LOG_ERROR("Unknown uring_op_type.");
+    else
+      completion_table[ctx->op_type](cqe, ctx);
 
     io_uring_cqe_seen(&state.ring, cqe);
 
@@ -405,8 +374,8 @@ void async_io_process() {
   }
 }
 
-void async_io_open_file(protothread_state *pt_state) {
-  open_file_locals *locals = (open_file_locals *)pt_state->locals;
+void async_io_open_file(protothread_state *pt) {
+  open_file_locals *locals = (open_file_locals *)pt->locals;
 
   // Cache check to maybe skip async
   // Figure out how to not do this everytime?????
@@ -416,7 +385,7 @@ void async_io_open_file(protothread_state *pt_state) {
     return;
   }
 
-  PT_BEGIN(pt_state, async_io_open_file);
+  PT_BEGIN(pt, async_io_open_file);
 
   // Fill out synchronous parts
   int count;
@@ -425,10 +394,9 @@ void async_io_open_file(protothread_state *pt_state) {
   locals->file->name = sdsdup(path_shards[count - 1]);
   sdsfreesplitres(path_shards, count);
 
-  PT_WAIT(pt_state,
-          handle_openat_submission(locals->path, &locals->file->fd, pt_state));
-  PT_WAIT(pt_state, handle_statx_submission(
-                        locals->file->fd, &locals->file->statx_buff, pt_state));
+  PT_WAIT(pt, handle_openat_submission(locals->path, &locals->file->fd, pt));
+  PT_WAIT(pt, handle_statx_submission(locals->file->fd,
+                                      &locals->file->statx_buff, pt));
 
   // Add to cache
   LRU_cache_add(
@@ -437,24 +405,24 @@ void async_io_open_file(protothread_state *pt_state) {
                      // for duplicating complex structs, especially if they
                      // include strings and the like
 
-  PT_END(pt_state);
+  PT_END(pt);
 }
 
-void async_io_send_buffer(protothread_state *pt_state) {
-  send_buffer_locals *locals = pt_state->locals;
+void async_io_send_buffer(protothread_state *pt) {
+  send_buffer_locals *locals = pt->locals;
 
-  PT_BEGIN(pt_state, async_io_send_buffer);
+  PT_BEGIN(pt, async_io_send_buffer);
 
-  PT_WAIT(pt_state, handle_send_submission(sdsdup(locals->buffer),
-                                           locals->client_fd, pt_state));
+  PT_WAIT(pt, handle_send_submission(sdsdup(locals->buffer), locals->client_fd,
+                                     pt));
 
-  PT_END(pt_state);
+  PT_END(pt);
 }
 
-void async_io_sendfile(protothread_state *pt_state) {
-  sendfile_locals *locals = pt_state->locals;
+void async_io_sendfile(protothread_state *pt) {
+  sendfile_locals *locals = pt->locals;
 
-  PT_BEGIN(pt_state, async_io_sendfile);
+  PT_BEGIN(pt, async_io_sendfile);
 
   // TODO: Make this a uring syscall.
   locals->splice_ctx =
@@ -467,7 +435,7 @@ void async_io_sendfile(protothread_state *pt_state) {
   if (pipe2(locals->splice_ctx.pipe, O_CLOEXEC))
     LOG_ERROR("async_io_sendfile - pipe2 failed.");
 
-  PT_WAIT(pt_state, handle_splice_all_submission(locals->splice_ctx, pt_state));
+  PT_WAIT(pt, handle_splice_all_submission(locals->splice_ctx, pt));
 
-  PT_END(pt_state);
+  PT_END(pt);
 }
