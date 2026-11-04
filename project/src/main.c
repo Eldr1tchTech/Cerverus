@@ -27,6 +27,7 @@ typedef struct test_locals {
   request_t *req;
   file_t file;
   response_t *res;
+  sds raw_res;
 } test_locals;
 
 void route_callback_test(protothread_state *state) {
@@ -70,12 +71,24 @@ void route_callback_test(protothread_state *state) {
   // Date
 
   // Send headers
-  sds raw_res = response_serialize(locals->res); // persistent across await
-  PT_WAIT(state, async_io_send_buffer(raw_res));
-  sdsfree(raw_res);
+  locals->raw_res = response_serialize(locals->res);
+  protothread_state *send_buffer_state =
+      cmem_new(protothread_state, .resume_label = nullptr, .caller = state,
+               .locals = cmem_new(send_buffer_locals, .buffer = locals->raw_res,
+                                  .client_fd = locals->client_fd));
+  PT_WAIT(state, async_io_send_buffer(send_buffer_state));
+  cmem_free(send_buffer_state->locals);
+  cmem_free(send_buffer_state);
+  sdsfree(locals->raw_res);
 
   // Send file
-  PT_WAIT(state, async_io_sendfile(locals->file.fd));
+  protothread_state *sendfile_state = cmem_new(
+      protothread_state, .resume_label = nullptr, .caller = state,
+      .locals = cmem_new(sendfile_locals, .client_fd = locals->client_fd,
+                         .file = &locals->file));
+  PT_WAIT(state, async_io_sendfile(sendfile_state));
+  cmem_free(sendfile_state->locals);
+  cmem_free(sendfile_state);
 
   // Cleanup
   cmem_free(locals);

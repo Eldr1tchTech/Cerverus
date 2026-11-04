@@ -5,6 +5,7 @@
 #include "core/containers/sv.h"
 #include "core/memory/cmem.h"
 #include "core/util/logger.h"
+#include "core/util/protothread.h"
 #include "core/util/util.h"
 #include "core/vendor/sds.h"
 #include "defines.h"
@@ -102,11 +103,23 @@ void route_callback_send_file(protothread_state *state) {
 
   // Send headers
   locals->raw_res = response_serialize(locals->res);
-  PT_WAIT(state, async_io_send_buffer(locals->raw_res));
+  protothread_state *send_buffer_state =
+      cmem_new(protothread_state, .resume_label = nullptr, .caller = state,
+               .locals = cmem_new(send_buffer_locals, .buffer = locals->raw_res,
+                                  .client_fd = locals->client_fd));
+  PT_WAIT(state, async_io_send_buffer(send_buffer_state));
+  cmem_free(send_buffer_state->locals);
+  cmem_free(send_buffer_state);
   sdsfree(locals->raw_res);
 
-  // Send file
-  PT_WAIT(state, async_io_sendfile(locals->file.fd));
+  // Sendfile
+  protothread_state *sendfile_state = cmem_new(
+      protothread_state, .resume_label = nullptr, .caller = state,
+      .locals = cmem_new(sendfile_locals, .client_fd = locals->client_fd,
+                         .file = &locals->file));
+  PT_WAIT(state, async_io_sendfile(sendfile_state));
+  cmem_free(sendfile_state->locals);
+  cmem_free(sendfile_state);
 
   // Cleanup
   cmem_free(locals);
@@ -137,8 +150,14 @@ void route_callback_send_404(protothread_state *state) {
   // Date
 
   // Send headers
-  locals->raw_res = response_serialize(locals->res); // persistent across await
-  PT_WAIT(state, async_io_send_buffer(locals->raw_res));
+  locals->raw_res = response_serialize(locals->res);
+  protothread_state *send_buffer_state =
+      cmem_new(protothread_state, .resume_label = nullptr, .caller = state,
+               .locals = cmem_new(send_buffer_locals, .buffer = locals->raw_res,
+                                  .client_fd = locals->client_fd));
+  PT_WAIT(state, async_io_send_buffer(send_buffer_state));
+  cmem_free(send_buffer_state->locals);
+  cmem_free(send_buffer_state);
   sdsfree(locals->raw_res);
 
   // Cleanup

@@ -2,6 +2,7 @@
 
 #include <liburing.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "core/util/protothread.h"
 #include "network/network_types.inl"
@@ -12,11 +13,20 @@ typedef enum uring_op_type {
   uring_op_type_recv,
   uring_op_type_openat,
   uring_op_type_send,
-  uring_op_type_sendfile,
   uring_op_type_close,
   uring_op_type_statx,
+  uring_op_type_splice,
+  uring_op_type_splice_all,
 } uring_op_type;
 
+typedef struct file_t {
+  int fd;
+  sds name;
+  sds path;
+  struct statx statx_buff;
+} file_t;
+
+// TODO: Make this internal and get rid of the seperate struct declaration.
 typedef struct recv_context {
   int client_fd;
   sds buffer;
@@ -24,9 +34,15 @@ typedef struct recv_context {
   request_t request;
 } recv_context;
 
-typedef struct send_context {
-
-} send_context;
+typedef struct splice_all_context {
+  int fd_in, fd_out;
+  uint64_t off_in, off_out;
+  int pipe[2];
+  unsigned int nbytes;
+  // Internal
+  size_t in_pipe;
+  bool is_draining;
+} splice_all_context;
 
 typedef struct logical_async_context {
   uring_op_type op_type;
@@ -40,14 +56,13 @@ typedef struct logical_async_context {
       struct statx *statx_buff;
     } statx;
     struct {
+      sds buffer;
       int client_fd;
-      char *buffer;
-      size_t size;
     } send;
     struct {
-      int file_fd;
-      int client_fd;
+      int *consumed;
     } splice;
+    splice_all_context splice_all;
     struct {
       int *fd;
     } close;
@@ -55,14 +70,6 @@ typedef struct logical_async_context {
   };
 } logical_async_context;
 
-typedef struct file_t {
-  int fd;
-  sds name;
-  sds path;
-  struct statx statx_buff;
-} file_t;
-
-// NOTE: If not appropriately called, may cause weird crashes.
 void async_io_setup();
 void async_io_shutdown();
 
@@ -85,13 +92,21 @@ void handle_statx_submission(int fd, struct statx *statx_buff,
 void handle_statx_completion(struct io_uring_cqe *cqe,
                              logical_async_context *ctx);
 
-void handle_send_submission(int client_fd, const char *buffer, size_t size);
+void handle_send_submission(sds buffer, int client_fd,
+                            protothread_state *pt_state);
 void handle_send_completion(struct io_uring_cqe *cqe,
                             logical_async_context *ctx);
 
-void handle_splice_submission(int file_fd, int client_fd);
+void handle_splice_submission(int *consumed, int fd_in, int64_t off_in,
+                              int fd_out, int64_t off_out, unsigned int nbytes,
+                              unsigned int splice_flags,
+                              protothread_state *pt_state);
 void handle_splice_completion(struct io_uring_cqe *cqe,
                               logical_async_context *ctx);
+
+void handle_splice_all_submission(splice_all_context splice_all_ctx, protothread_state* pt_state);
+void handle_splice_all_completion(struct io_uring_cqe *cqe,
+                                  logical_async_context *ctx);
 
 void handle_close_submission(int fd);
 void handle_close_completion(struct io_uring_cqe *cqe,
@@ -106,6 +121,17 @@ typedef struct open_file_locals {
 
 void async_io_open_file(protothread_state *pt_state);
 
-void async_io_send_buffer(sds str);
+typedef struct send_buffer_locals {
+  sds buffer;
+  int client_fd;
+} send_buffer_locals;
 
-void async_io_sendfile(int fd);
+void async_io_send_buffer(protothread_state *pt_state);
+
+typedef struct sendfile_locals {
+  int client_fd;
+  file_t *file;
+  splice_all_context splice_ctx;
+} sendfile_locals;
+
+void async_io_sendfile(protothread_state *pt_state);

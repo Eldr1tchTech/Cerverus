@@ -37,6 +37,9 @@ typedef unsigned long long u64;
 
 typedef signed int i32;
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 #define U64_MAX ((u64) - 1)
 
 #if defined(_WIN32) || defined(_WIN64)
