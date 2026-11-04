@@ -5,7 +5,6 @@
 #include "core/util/logger.h"
 #include "core/util/profiler.h"
 #include "core/util/protothread.h"
-#include "core/util/util.h"
 #include "core/vendor/sds.h"
 #include "defines.h"
 #include "network/http/request.h"

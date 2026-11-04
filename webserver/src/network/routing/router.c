@@ -57,6 +57,9 @@ typedef struct send_file_locals {
   file_t file;
   response_t *res;
   sds raw_res;
+  protothread_state *open_file_state;
+  protothread_state *send_buffer_state;
+  protothread_state *sendfile_state;
 } send_file_locals;
 
 void route_callback_send_file(protothread_state *state) {
@@ -67,13 +70,13 @@ void route_callback_send_file(protothread_state *state) {
   locals = cmem_realloc(locals, sizeof(send_file_locals));
   locals->res = response_create();
 
-  protothread_state *open_file_state = cmem_alloc(sizeof(protothread_state));
-  open_file_state->resume_label = nullptr;
-  open_file_state->locals = cmem_alloc(sizeof(open_file_locals));
-  ((open_file_locals *)open_file_state->locals)->path = locals->path;
-  ((open_file_locals *)open_file_state->locals)->file = &locals->file;
-  open_file_state->caller = state;
-  PT_WAIT(state, async_io_open_file(open_file_state));
+  locals->open_file_state =
+      cmem_new(protothread_state, .resume_label = nullptr, .caller = state,
+               .locals = cmem_new(open_file_locals, .path = locals->path,
+                                  .file = &locals->file));
+  PT_WAIT(state, async_io_open_file(locals->open_file_state));
+  cmem_free(locals->open_file_state->locals);
+  cmem_free(locals->open_file_state);
 
   // Setup status line
   locals->res->status_line.version = http_version_1p1;
@@ -103,23 +106,25 @@ void route_callback_send_file(protothread_state *state) {
 
   // Send headers
   locals->raw_res = response_serialize(locals->res);
-  protothread_state *send_buffer_state =
+  locals->send_buffer_state =
       cmem_new(protothread_state, .resume_label = nullptr, .caller = state,
                .locals = cmem_new(send_buffer_locals, .buffer = locals->raw_res,
                                   .client_fd = locals->client_fd));
-  PT_WAIT(state, async_io_send_buffer(send_buffer_state));
-  cmem_free(send_buffer_state->locals);
-  cmem_free(send_buffer_state);
+  PT_WAIT(state, async_io_send_buffer(locals->send_buffer_state));
+  cmem_free(locals->send_buffer_state->locals);
+  cmem_free(locals->send_buffer_state);
   sdsfree(locals->raw_res);
 
   // Sendfile
-  protothread_state *sendfile_state = cmem_new(
+  locals->sendfile_state = cmem_new(
       protothread_state, .resume_label = nullptr, .caller = state,
       .locals = cmem_new(sendfile_locals, .client_fd = locals->client_fd,
                          .file = &locals->file));
-  PT_WAIT(state, async_io_sendfile(sendfile_state));
-  cmem_free(sendfile_state->locals);
-  cmem_free(sendfile_state);
+  PT_WAIT(state, async_io_sendfile(locals->sendfile_state));
+  cmem_free(locals->sendfile_state->locals);
+  cmem_free(locals->sendfile_state);
+
+  PT_WAIT(state, handle_close_submission(locals->client_fd));
 
   // Cleanup
   cmem_free(locals);
@@ -159,6 +164,8 @@ void route_callback_send_404(protothread_state *state) {
   cmem_free(send_buffer_state->locals);
   cmem_free(send_buffer_state);
   sdsfree(locals->raw_res);
+
+  PT_WAIT(state, handle_close_submission(locals->client_fd));
 
   // Cleanup
   cmem_free(locals);
