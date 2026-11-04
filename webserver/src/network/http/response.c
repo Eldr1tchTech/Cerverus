@@ -62,6 +62,7 @@ sds response_serialize(response_t *res) {
   darray_foreach(res->headers, elem) {
     raw_res = sdscatprintf(raw_res, "%s: %s\r\n", elem->sds.name, elem->sds.value);
   }
+  raw_res = sdscatlen(raw_res, "\r\n", 2);
 
   // BODY
   if (res->body) raw_res = sdscatsds(raw_res, res->body);

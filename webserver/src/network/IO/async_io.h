@@ -104,7 +104,8 @@ void handle_splice_submission(int *consumed, int fd_in, int64_t off_in,
 void handle_splice_completion(struct io_uring_cqe *cqe,
                               logical_async_context *ctx);
 
-void handle_splice_all_submission(splice_all_context splice_all_ctx, protothread_state* pt_state);
+void handle_splice_all_submission(splice_all_context splice_all_ctx,
+                                  protothread_state *pt_state);
 void handle_splice_all_completion(struct io_uring_cqe *cqe,
                                   logical_async_context *ctx);
 
@@ -135,3 +136,13 @@ typedef struct sendfile_locals {
 } sendfile_locals;
 
 void async_io_sendfile(protothread_state *pt_state);
+
+#define ASYNC_CALL(name, init_locals)                                          \
+  do {                                                                         \
+    locals->name##_state =                                                     \
+        cmem_new(protothread_state, .caller = state,                           \
+                 .locals = cmem_new(name##_locals, init_locals));              \
+    PT_WAIT(state, async_io_##name(locals->name##_state));                     \
+    cmem_free(locals->name##_state->locals);                                   \
+    cmem_free(locals->name##_state);                                           \
+  } while (0)

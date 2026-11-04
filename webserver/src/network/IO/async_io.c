@@ -21,6 +21,8 @@
 
 #define TEMP_CONNECTIONS 16
 #define SPLICE_MAX_SIZE (64 * 1024)
+#define RECV_CHUNK (4 * 1024)
+#define MAX_REQUEST (16 * 1024)
 
 typedef struct uring_state {
   LRU_cache *file_cache;
@@ -29,9 +31,6 @@ typedef struct uring_state {
   u64 connections;
   router_t *rtr;
 } uring_state;
-
-#define RECV_CHUNK 4096
-#define MAX_REQUEST (16 * 1024)
 
 static uring_state state;
 

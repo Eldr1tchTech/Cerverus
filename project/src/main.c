@@ -28,6 +28,7 @@ typedef struct test_locals {
   file_t file;
   response_t *res;
   sds raw_res;
+  protothread_state *open_file_state;
 } test_locals;
 
 void route_callback_test(protothread_state *state) {
@@ -38,14 +39,14 @@ void route_callback_test(protothread_state *state) {
   locals = cmem_realloc(state->locals, sizeof(test_locals));
   locals->res = response_create();
 
-  protothread_state *open_file_state = cmem_alloc(sizeof(protothread_state));
-  open_file_state->resume_label = nullptr;
-  open_file_state->locals = cmem_alloc(sizeof(open_file_locals));
-  ((open_file_locals *)open_file_state->locals)->path =
-      sdsnewlit("assets/public/test.html");
-  ((open_file_locals *)open_file_state->locals)->file = &locals->file;
-  open_file_state->caller = state;
-  PT_WAIT(state, async_io_open_file(open_file_state));
+  locals->open_file_state =
+      cmem_new(protothread_state, .caller = state,
+               .locals = cmem_new(open_file_locals,
+                                  .path = sdsnewlit("assets/public/test.html"),
+                                  .file = &locals->file));
+  PT_WAIT(state, async_io_open_file(locals->open_file_state));
+  cmem_free(locals->open_file_state->locals);
+  cmem_free(locals->open_file_state);
 
   // Setup status line
   locals->res->status_line.version = http_version_1p1;
@@ -57,10 +58,11 @@ void route_callback_test(protothread_state *state) {
   // TODO: Make this more user-friendly
   // Content-Type
   char *dot = memchr(locals->file.name, '.', sdslen(locals->file.name));
-  header_t h = {
-      .sds = {.name = sdsnewlit("Content-Type"),
-              .value = sdsnew(content_type_val_helper((sv_t){
-                  .ptr = dot + 1, .len = locals->file.name + sdslen(locals->file.name) - (dot + 1)}))}};
+  header_t h = {.sds = {.name = sdsnewlit("Content-Type"),
+                        .value = sdsnew(content_type_val_helper((sv_t){
+                            .ptr = dot + 1,
+                            .len = locals->file.name +
+                                   sdslen(locals->file.name) - (dot + 1)}))}};
   response_add_header(locals->res, h);
 
   // Content-Length
@@ -105,7 +107,8 @@ int main() {
   router_t *rtr = router_create(&rtr_conf);
 
   sds temp_str = sdsnewlit("/test");
-  route_t *rt_test = route_create(http_method_get, temp_str, route_callback_test);
+  route_t *rt_test =
+      route_create(http_method_get, temp_str, route_callback_test);
 
   router_add_route(rtr, rt_test);
 
