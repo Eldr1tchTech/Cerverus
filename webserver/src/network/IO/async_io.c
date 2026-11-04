@@ -224,6 +224,7 @@ void handle_send_completion(struct io_uring_cqe *cqe,
   if (sdslen(ctx->send.buffer) > 0) {
     handle_send_submission(ctx->send.buffer, ctx->send.client_fd,
                            ctx->pt_state);
+    return;
   }
 
   sdsfree(ctx->send.buffer);
@@ -266,14 +267,15 @@ void handle_splice_all_submission(splice_all_context splice_all_ctx,
   // Setup ctx
   struct io_uring_sqe *sqe = io_uring_get_sqe_wrapper();
   logical_async_context *ctx = cmem_alloc(sizeof(logical_async_context));
+  ctx->op_type = uring_op_type_splice_all;
   ctx->splice_all = splice_all_ctx;
   ctx->pt_state = pt_state;
 
   if (ctx->splice_all.is_draining) {
     // Drain pipe
     io_uring_prep_splice(sqe, ctx->splice_all.pipe[0], -1,
-                         ctx->splice_all.fd_out, ctx->splice_all.fd_out,
-                         ctx->splice_all.in_pipe, 0);
+                         ctx->splice_all.fd_out, -1, ctx->splice_all.in_pipe,
+                         0);
   } else {
     // Fill pipe
     io_uring_prep_splice(sqe, ctx->splice_all.fd_in, ctx->splice_all.off_in,
@@ -303,10 +305,13 @@ void handle_splice_all_completion(struct io_uring_cqe *cqe,
       ctx->pt_state->self(ctx->pt_state);
     } else {
       ctx->splice_all.is_draining = false;
+      handle_splice_all_submission(ctx->splice_all, ctx->pt_state);
     }
   } else {
     ctx->splice_all.nbytes -= cqe->res;
+    ctx->splice_all.in_pipe += cqe->res;
     ctx->splice_all.is_draining = true;
+    handle_splice_all_submission(ctx->splice_all, ctx->pt_state);
   }
 }
 
@@ -397,7 +402,7 @@ void async_io_process() {
     res = io_uring_peek_cqe(&state.ring, &cqe);
   }
 
-  if (res < 0) {
+  if (res < 0 && res != -EAGAIN) {
     LOG_ERROR("async_io_process - Error emitted: %i", res);
   }
 }
@@ -456,13 +461,12 @@ void async_io_sendfile(protothread_state *pt_state) {
   // TODO: Make this a uring syscall.
   locals->splice_ctx =
       (splice_all_context){.fd_in = locals->file->fd,
-                                   .fd_out = locals->client_fd,
-                                   .off_in = 0,
-                                   .off_out = -1,
-                                   .nbytes = locals->file->statx_buff.stx_size,
-                                   .is_draining = false};
+                           .fd_out = locals->client_fd,
+                           .off_in = 0,
+                           .nbytes = locals->file->statx_buff.stx_size,
+                           .is_draining = false};
 
-  if (pipe2(locals->splice_ctx.pipe, O_CLOEXEC | O_NONBLOCK))
+  if (pipe2(locals->splice_ctx.pipe, O_CLOEXEC))
     LOG_ERROR("async_io_sendfile - pipe2 failed.");
 
   PT_WAIT(pt_state, handle_splice_all_submission(locals->splice_ctx, pt_state));

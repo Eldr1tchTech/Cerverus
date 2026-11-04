@@ -36,7 +36,7 @@ typedef struct recv_context {
 
 typedef struct splice_all_context {
   int fd_in, fd_out;
-  uint64_t off_in, off_out;
+  uint64_t off_in;
   int pipe[2];
   unsigned int nbytes;
   // Internal
