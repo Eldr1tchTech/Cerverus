@@ -57,7 +57,7 @@ void route_callback_test(protothread_state *state) {
 
   // TODO: Make this more user-friendly
   // Content-Type
-  char *dot = memchr(locals->file.name, '.', sdslen(locals->file.name));
+  char *dot = memrchr(locals->file.name, '.', sdslen(locals->file.name));
   header_t h = {.sds = {.name = sdsnewlit("Content-Type"),
                         .value = sdsnew(content_type_val_helper((sv_t){
                             .ptr = dot + 1,

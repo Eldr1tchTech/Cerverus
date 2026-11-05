@@ -9,6 +9,10 @@ lit_t content_type_val_helper(sv_t ext) {
     return "text/html";
   if (sv_eq_lit(ext, "css"))
     return "text/css";
+  if (sv_eq_lit(ext, "js"))
+    return "text/javascript";
+  if (sv_eq_lit(ext, "json"))
+    return "application/json";
   if (sv_eq_lit(ext, "jpg") || sv_eq_lit(ext, "jpeg"))
     return "image/jpeg";
   if (sv_eq_lit(ext, "png"))
@@ -25,5 +29,6 @@ lit_t content_type_val_helper(sv_t ext) {
   LOG_ERROR("content_type_val_helper - Currently unsupported file extension: "
             "%.*s. Returning null.",
             (int)ext.len, ext.ptr);
-  return nullptr;
+  // Safe default return?
+  return "application/octet-stream";
 }

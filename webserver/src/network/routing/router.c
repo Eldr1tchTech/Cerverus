@@ -87,7 +87,7 @@ void route_callback_send_file(protothread_state *state) {
 
   // TODO: Make this more user-friendly
   // Content-Type
-  char *dot = memchr(locals->file.name, '.', sdslen(locals->file.name));
+  char *dot = memrchr(locals->file.name, '.', sdslen(locals->file.name));
   if (!dot)
     LOG_ERROR("no extention present.");
   sv_t type = {.ptr = dot + 1,

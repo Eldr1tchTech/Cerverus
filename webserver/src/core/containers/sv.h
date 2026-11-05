@@ -19,7 +19,7 @@ sv_t *sv_create(char *str, size_t len);
 void sv_destroy(sv_t *sv);
 
 static inline int sv_cmp(sv_t a, sv_t b) {
-  return _strcmp(a.ptr, a.len, a.ptr, a.len);
+  return _strcmp(a.ptr, a.len, b.ptr, b.len);
 }
 
 static inline bool sv_eq(sv_t sv, const char *str, size_t len) {return sv.len == len && _strcmp(sv.ptr, sv.len, str, len) == 0;}
