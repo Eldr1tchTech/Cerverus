@@ -20,23 +20,19 @@ lit_t serialize_http_version(http_version version) {
 }
 
 response_t *response_create() {
-  response_t *new_res = cmem_alloc(sizeof(response_t));
-
-  new_res->headers = darray_create(16, sizeof(header_t));
+  response_t *new_res = cmem_new(response_t, .headers = darray_create(16, sizeof(header_t)));
 
   return new_res;
 }
 
 void response_add_header(response_t *res, header_t h) {
-  darray_add(res->headers, &h);
+  res->headers = darray_add(res->headers, &h);
 }
 
 void response_destroy(response_t* res) {
   // STATUS LINE
 
   // HEADERS
-
-  // BODY
   darray_foreach(res->headers, elem) {
     sdsfree(elem->sds.name);
     sdsfree(elem->sds.value);

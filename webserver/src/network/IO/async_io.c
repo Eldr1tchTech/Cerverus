@@ -392,9 +392,7 @@ void async_io_open_file(protothread_state *pt) {
   // Add to cache
   LRU_cache_add(
       state.file_cache, sdstosv(locals->path),
-      locals->file); // NOTE: may be necessary to adopt a facotry-like approach
-                     // for duplicating complex structs, especially if they
-                     // include strings and the like
+      locals->file);
 
   PT_END(pt);
 }

@@ -14,6 +14,10 @@ add_compile_options(-g)
 add_compile_definitions(_POSIX_C_SOURCE=200809L _GNU_SOURCE _DEBUG)
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     add_compile_options(-fdeclspec)     # clang-only; guarded so gcc also works
+    if(ENABLE_ASAN)
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address,undefined)
+endif()
 endif()
 
 # webserver (was Makefile.webserver.linux.mak)

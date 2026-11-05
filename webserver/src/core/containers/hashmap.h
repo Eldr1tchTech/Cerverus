@@ -2,6 +2,7 @@
 
 #include "core/containers/sv.h"
 #include "core/vendor/sds.h"
+#include <stddef.h>
 
 typedef size_t (*hash_fn)(sv_t key);
 
@@ -9,12 +10,13 @@ typedef struct hashmap_entry {
   bool exists;
   sds key;
   bool is_tombstone;
-  char data[];
+  alignas(max_align_t) char data[];
 } hashmap_entry;
 
 typedef struct hashmap {
   size_t size;
   size_t stride;
+  size_t entry_size;
   hash_fn hash;
   hashmap_entry *entries;
 } hashmap;

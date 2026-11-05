@@ -36,7 +36,11 @@ void route_callback_test(protothread_state *state) {
   test_locals *locals = (test_locals *)state->locals;
 
   PT_BEGIN(state, route_callback_test);
+
+  // memory setup
   locals = cmem_realloc(state->locals, sizeof(test_locals));
+  state->locals = locals;
+
   locals->res = response_create();
 
   locals->open_file_state =

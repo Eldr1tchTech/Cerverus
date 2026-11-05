@@ -11,6 +11,7 @@
 #include "defines.h"
 #include "network/IO/async_io.h"
 #include "network/http/response.h"
+#include "network/network_types.inl"
 #include "network/network_util.h"
 #include "network/routing/route_trie.h"
 #include <stddef.h>
@@ -67,7 +68,6 @@ void route_callback_send_file(protothread_state *state) {
   send_file_locals *locals = (send_file_locals *)state->locals;
 
   PT_BEGIN(state, route_callback_send_file);
-  locals = cmem_realloc(locals, sizeof(send_file_locals));
   locals->res = response_create();
 
   locals->open_file_state =
@@ -186,14 +186,10 @@ void prep_route_callback_send_404(int client_fd) {
 }
 
 void prep_route_callback_send_file(int client_fd, sds path) {
-  protothread_state *state = cmem_alloc(sizeof(protothread_state));
-  state->resume_label = nullptr;
-  send_file_locals *locals = cmem_alloc(sizeof(send_file_locals));
-
-  state->locals = locals;
-  locals->client_fd = client_fd;
-  locals->path = path;
-
+  protothread_state *state =
+      cmem_new(protothread_state, .resume_label = nullptr,
+               .locals = cmem_new(send_file_locals, .client_fd = client_fd,
+                                  .path = path));
   route_callback_send_file(state);
 }
 
@@ -224,11 +220,10 @@ void router_handle_request(router_t *rtr, request_t *request, int client_fd) {
     pt_fn handler = trie_find_handler(rtr->routing_table,
                                       request->status_line.method, URI_sds);
 
-    protothread_state *state = cmem_alloc(sizeof(protothread_state));
-    state->resume_label = nullptr;
-    state->locals = cmem_alloc(sizeof(minimal_locals));
-    ((minimal_locals *)(state->locals))->client_fd = client_fd;
-    ((minimal_locals *)(state->locals))->req = request;
+    protothread_state *state =
+        cmem_new(protothread_state, .resume_label = nullptr,
+                 .locals = cmem_new(minimal_locals, .client_fd = client_fd,
+                                    .req = request));
 
     if (handler) {
       (*handler)(state);
