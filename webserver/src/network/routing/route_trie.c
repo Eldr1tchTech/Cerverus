@@ -69,7 +69,8 @@ void trie_add_route(trie *t, route_t *rt) {
       new_node.segment.is_dynamic = rt->segments_darr[i].is_dynamic;
       new_node.children = darray_create(2, sizeof(trie_node_t));
       new_node.callback = nullptr;
-      children = darray_add(current->children, &new_node);
+      current->children = darray_add(current->children, &new_node);
+      children = current->children;
       next = &children[*darray_get_length(current->children) - 1];
     }
 

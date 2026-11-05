@@ -24,16 +24,16 @@ return (hashmap_entry *)((char *)hmap->entries + hmap->entry_size * index);
 }
 
 hashmap *hashmap_create(size_t size, double load, size_t stride, hash_fn hash) {
-  hashmap *new_hmap =
-      cmem_new(hashmap, .stride = stride, .hash = hash ? hash : hash_fnv1a,
-               .entry_size = ALIGN_UP(sizeof(hashmap_entry) + stride,
-                                      alignof(max_align_t)));
-
   if (load <= 0 || load > 1)
     LOG_DEBUG("hashmap_create - load should be between 0.0 and 1.0. load: %d",
               load);
-  new_hmap->size = size / load;
-  size_t temp_size = (sizeof(hashmap_entry) + stride) * new_hmap->size;
+              
+  hashmap *new_hmap =
+      cmem_new(hashmap, .stride = stride, .hash = hash ? hash : hash_fnv1a,
+               .entry_size = ALIGN_UP(sizeof(hashmap_entry) + stride,
+                                      alignof(max_align_t)), .size = size / load);
+
+  size_t temp_size = (new_hmap->entry_size) * new_hmap->size;
   new_hmap->entries = cmem_alloc(temp_size);
   cmem_zmem(new_hmap->entries, temp_size);
 
