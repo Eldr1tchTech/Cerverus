@@ -4,8 +4,8 @@
 #include "core/util/bitwise.h"
 #include "core/util/logger.h"
 
-pool_allocator *pool_allocator_create(size_t stride, size_t size) {
-  pool_allocator *pool_alloc = cmem_alloc(sizeof(pool_allocator));
+pool_alloc_t *pool_allocator_create(size_t stride, size_t size) {
+  pool_alloc_t *pool_alloc = cmem_alloc(sizeof(pool_alloc_t));
   pool_alloc->availability = bitarray_create(size);
   pool_alloc->stride = stride;
   pool_alloc->data = cmem_alloc(pool_alloc->availability->size * stride);
@@ -13,13 +13,13 @@ pool_allocator *pool_allocator_create(size_t stride, size_t size) {
   return pool_alloc;
 }
 
-void pool_allocator_destroy(pool_allocator *pool_alloc) {
+void pool_allocator_destroy(pool_alloc_t *pool_alloc) {
   cmem_free(pool_alloc->data);
   bitarray_destroy(pool_alloc->availability);
   cmem_free(pool_alloc);
 }
 
-void *pool_allocator_alloc(pool_allocator *pool_alloc) {
+void *pool_allocator_alloc(pool_alloc_t *pool_alloc) {
   for (size_t i = 0; i < pool_alloc->availability->size; i++) {
     if (bitwise_get(pool_alloc->availability, i))
       continue;
@@ -29,7 +29,7 @@ void *pool_allocator_alloc(pool_allocator *pool_alloc) {
   return nullptr;
 }
 
-void pool_allocator_free(pool_allocator *pool_alloc, void *block) {
+void pool_allocator_free(pool_alloc_t *pool_alloc, void *block) {
   if (block < pool_alloc->data ||
       block > pool_alloc->data +
                   pool_alloc->stride * (pool_alloc->availability->size - 1)) {

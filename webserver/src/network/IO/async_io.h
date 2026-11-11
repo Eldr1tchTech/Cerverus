@@ -1,131 +1,101 @@
 #pragma once
 
-#include <liburing.h>
-#include <stddef.h>
-#include <stdint.h>
-
+#include "core/containers/sv.h"
 #include "core/util/protothread.h"
-#include "network/network_types.inl"
-#include "network/routing/router.h"
+#include "defines.h"
+#include <linux/stat.h>
+#include <sys/socket.h>
 
-void async_io_setup();
+// ==== LIFETIME ================
+/*
+- init, shutdown, tick
+*/
+
+// LRU cache, registered fd table, ring_helper_init
+bool async_io_init();
 void async_io_shutdown();
 
-void async_io_update_values(int server_fd, router_t *rtr);
+// Just serve as a wrapper to ring_helper_tick
+void async_io_tick();
 
-#define URING_OPS(X) \
-  X(accept) X(recv) X(openat) X(send) X(close) X(statx) X(splice) X(splice_all)
-
-typedef enum uring_op_type {
-#define X(n) uring_op_type_##n,
-  URING_OPS(X)
-#undef X
-  uring_op_type_count,
-} uring_op_type;
-
+// ==== FILE HANDLING ===========
+/*
+- realease and acquire functions to count refs
+- openat, statx, and close interface with the OS/uring
+*/
 typedef struct file_t {
   int fd;
+  size_t refs;
   sds name;
   sds path;
   struct statx statx_buff;
 } file_t;
 
-// TODO: Make this internal and get rid of the seperate struct declaration.
-typedef struct recv_context {
-  int client_fd;
-  sds buffer;
-  size_t offset;
-  request_t request;
-} recv_context;
+typedef struct async_open_file_args_t {
+  sv_t path;
+  file_t *f;
+} async_open_file_args_t;
 
-typedef struct splice_all_context {
-  int fd_in, fd_out;
-  uint64_t off_in;
-  int pipe[2];
-  unsigned int nbytes;
-  // Internal
-  size_t in_pipe;
-  bool is_draining;
-} splice_all_context;
-
-typedef struct logical_async_context {
-  uring_op_type op_type;
-  protothread_state *pt;
-  union {
-    recv_context recv;
-    struct {
-      int *fd;
-    } openat;
-    struct {
-      struct statx *statx_buff;
-    } statx;
-    struct {
-      sds buffer;
-      int client_fd;
-    } send;
-    struct {
-      int *consumed;
-    } splice;
-    splice_all_context splice_all;
-    struct {
-      int *fd;
-    } close;
-    void *local;
-  };
-} logical_async_context;
-
-// after logical_async_context is defined:
-#define X(n) void handle_##n##_completion(struct io_uring_cqe *, logical_async_context *);
-URING_OPS(X)
-#undef X
-
-void async_io_process();
-
-void handle_accept_submission();
-void handle_recv_submission(int client_fd, recv_context *recv_ctx);
-void handle_openat_submission(sds path, int *fd, protothread_state *pt);
-void handle_statx_submission(int fd, struct statx *statx_buff,
-                             protothread_state *pt);
-void handle_send_submission(sds buffer, int client_fd,
-                            protothread_state *pt);
-void handle_splice_submission(int *consumed, int fd_in, int64_t off_in,
-                              int fd_out, int64_t off_out, unsigned int nbytes,
-                              unsigned int splice_flags,
-                              protothread_state *pt);
-void handle_splice_all_submission(splice_all_context splice_all_ctx,
-                                  protothread_state *pt);
-void handle_close_submission(int fd, protothread_state* pt);
-
-
-
-typedef struct open_file_locals {
-  sds path;
-  file_t *file;
-} open_file_locals;
-
+// Checks LRU cache handles the lifetime modification section.
 void async_io_open_file(protothread_state *pt);
 
-typedef struct send_buffer_locals {
-  sds buffer;
+// Checks whether it can be closed, handles all that jazz
+void async_io_close_file(file_t *f);
+
+// ==== NETWORKING ==============
+/*
+- Setting up state (server socket)
+- API
+  - (recv) some way to hook into the receive so that what is present can be
+validated on whether it's ready to be processed or if it's unfinished, pass a
+function pointer so that it can be extended to be used for other purposes such
+as chunked transfer-encoding (uploading/downloading files)
+  - (send/send_all)
+  - (sendfile [-> pipe2, splice/splice_all]) figure out pipelining for these
+*/
+
+typedef struct async_socket_args_t {
+  int domain;
+  int type;
+  int protocol;
+  unsigned int flags;
+  int sock;
+} async_socket_args_t;
+
+void async_io_socket(protothread_state *pt);
+
+typedef struct async_multishot_accept_args_t {
+  int fd;
+  struct sockaddr *addr;
+  socklen_t* addrlen;
+  int flags;
+} async_multishot_accept_args_t;
+
+// do I even take a pt for this? probably not right???
+void async_io_multishot_accept(protothread_state *pt);
+
+// @returns nullptr if unfinished, otherwise the output parsed into expected
+// struct.
+typedef void *(*async_recv_args_validation_fn)(sds buffer);
+
+typedef struct async_recv_args_t {
   int client_fd;
-} send_buffer_locals;
+  sds buffer;
+  async_recv_args_validation_fn validation_fn;
+} async_recv_args_t;
+
+void async_io_recv(protothread_state *pt);
+
+typedef struct async_send_buffer_args_t {
+  int client_fd;
+  sds buffer;
+} async_send_buffer_args_t;
 
 void async_io_send_buffer(protothread_state *pt);
 
-typedef struct sendfile_locals {
+typedef struct async_sendfile_args_t {
   int client_fd;
-  file_t *file;
-  splice_all_context splice_ctx;
-} sendfile_locals;
+  int file_fd;
+} async_sendfile_args_t;
 
 void async_io_sendfile(protothread_state *pt);
-
-#define ASYNC_CALL(name, init_locals)                                          \
-  do {                                                                         \
-    locals->name##_state =                                                     \
-        cmem_new(protothread_state, .caller = state,                           \
-                 .locals = cmem_new(name##_locals, init_locals));              \
-    PT_WAIT(state, async_io_##name(locals->name##_state));                     \
-    cmem_free(locals->name##_state->locals);                                   \
-    cmem_free(locals->name##_state);                                           \
-  } while (0)

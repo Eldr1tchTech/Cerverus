@@ -7,6 +7,7 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <liburing.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -14,6 +15,9 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+static volatile sig_atomic_t g_running = 1;
+static void on_stop(int) { g_running = 0; }
 
 // TODO: Maybe it should take a pointer to the server, so taht it can be stack
 // allocated by the calling context
@@ -29,6 +33,11 @@ void server_destroy(server *s) { cmem_free(s); }
 
 // TODO: Setup in here should eveutally flow through async_io
 bool server_setup(server *srv) {
+
+  struct sigaction st = {.sa_handler = on_stop};
+  sigemptyset(&st.sa_mask);
+  sigaction(SIGINT, &st, nullptr);
+  sigaction(SIGTERM, &st, nullptr);
 
   // Install SIGPIPE handler to prevent crashes
   struct sigaction sa;
@@ -88,9 +97,7 @@ void server_run(server *srv) {
     handle_accept_submission();
   }
 
-  while (true) {
-    async_io_process();
-  }
+  while (g_running) { async_io_process(); }
 
   close(srv->socket_fd);
 

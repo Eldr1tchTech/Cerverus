@@ -21,7 +21,7 @@ typedef struct server {
   int socket_fd;
   struct {
     struct io_uring ring;
-    pool_allocator *pool_alloc_ctx;
+    pool_alloc_t *pool_alloc_ctx;
     LRU_cache *LRU_fd_cache;
   } uring;
   server_config *conf;

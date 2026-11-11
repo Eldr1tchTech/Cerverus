@@ -4,12 +4,9 @@ A high performance webserver made for linux first, should eventually also be abl
 
 ## TODO
 
-- finish the string-handling refactor, see conventions.
-- rework conventions to be header-based, alias to char*, retrieve the len through a method.
-- maybe remove sv? the only thing that gets weird is ownership, what exactly is the purpose of sv?
+- refactor asyncIO into an external definition and API, and an internal io_uring stuff and access
 - proper error handling across async_io
 - finish transitioning types to be _t affixed
-- finish io_uring state machine
 - use GnuTLS for the SSL handshake
 - Uploading/Downloading Files
 
