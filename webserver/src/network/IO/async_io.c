@@ -45,7 +45,7 @@ void open_file_completion_fn(ring_helper_op_data_t *op_data, int res,
                              unsigned flags) {
   protothread_state *pt = op_data->pt;
 
-
+  
 }
 
 void async_io_open_file(protothread_state *pt) {
@@ -64,7 +64,7 @@ void async_io_open_file(protothread_state *pt) {
   PT_WAIT(pt, ring_helper_queue(openat_direct, op_data, AT_FDCWD, locals->path,
                                 O_RDONLY, 0, IORING_FILE_INDEX_ALLOC));
 
-  PT_WAIT(pt, ring_helper_queue(statx, op_data, -1, "", AT_EMPTY_PATH, STATX_ALL, &locals->f->statx_buff));
+  PT_WAIT(pt, ring_helper_queue(statx, op_data, -1, "", AT_EMPTY_PATH, STATX_SIZE, &locals->f->statx_buff));
 
   PT_END(pt);
 }
