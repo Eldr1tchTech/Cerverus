@@ -2,9 +2,11 @@
 
 #include "core/util/logger.h"
 
+#include <liburing.h>
 #include <string.h>
 
-// TODO: Introduce some mechanism to calculate as many of these as possible programmatically.
+// TODO: Introduce some mechanism to calculate as many of these as possible
+// programmatically.
 #define RING_SQ_ENTRIES 256
 // Completions can pile up while the loop is busy (SQPOLL posts them on its
 // own), and every open connection can hold an in-flight op. A full CQ means
@@ -21,9 +23,10 @@ typedef struct ring_helper_g {
 
 static ring_helper_g state;
 
-bool ring_helper_init(void) {
+bool ring_helper_init(bool register_files) {
   struct io_uring_params params = {0};
-  params.flags = IORING_SETUP_SQPOLL | IORING_SETUP_SQ_AFF | IORING_SETUP_CQSIZE;
+  params.flags =
+      IORING_SETUP_SQPOLL | IORING_SETUP_SQ_AFF | IORING_SETUP_CQSIZE;
   params.sq_thread_cpu = RING_SQ_THREAD_CPU;
   params.sq_thread_idle = RING_SQ_THREAD_IDLE_MS;
   params.cq_entries = RING_CQ_ENTRIES;
@@ -32,6 +35,15 @@ bool ring_helper_init(void) {
   if (ret < 0) {
     LOG_FATAL("ring_helper_init - io_uring init failed: %s", strerror(-ret));
     return false;
+  }
+
+  if (register_files) {
+    ret = io_uring_register_files_sparse(&state.ring, 65536);
+    if (ret < 0) {
+      LOG_FATAL("ring_helper_init - file registering failed: %s",
+                strerror(-ret));
+      return false;
+    }
   }
 
   return true;

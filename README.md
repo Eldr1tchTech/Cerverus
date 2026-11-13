@@ -4,7 +4,8 @@ A high performance webserver made for linux first, should eventually also be abl
 
 ## TODO
 
-- refactor asyncIO into an external definition and API, and an internal io_uring stuff and access
+- finish the async IO reimplementation/refactor
+  - finish the file handling in the registered file descriptor buffer
 - proper error handling across async_io
 - finish transitioning types to be _t affixed
 - use GnuTLS for the SSL handshake

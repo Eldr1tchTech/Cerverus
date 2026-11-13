@@ -32,7 +32,7 @@ typedef struct file_t {
 } file_t;
 
 typedef struct async_open_file_args_t {
-  sv_t path;
+  sds path;
   file_t *f;
 } async_open_file_args_t;
 
@@ -40,7 +40,7 @@ typedef struct async_open_file_args_t {
 void async_io_open_file(protothread_state *pt);
 
 // Checks whether it can be closed, handles all that jazz
-void async_io_close_file(file_t *f);
+bool async_io_close_file(file_t *f);
 
 // ==== NETWORKING ==============
 /*

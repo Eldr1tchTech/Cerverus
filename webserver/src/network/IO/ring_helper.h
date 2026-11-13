@@ -29,7 +29,7 @@ struct ring_helper_op_data_t {
   protothread_state *pt;  // used by ring_helper_resume_pt; may be nullptr
 };
 
-bool ring_helper_init(void);
+bool ring_helper_init(bool register_files);
 void ring_helper_shutdown(void);
 
 // One event-loop iteration:
