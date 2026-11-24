@@ -26,8 +26,7 @@ void logger_log(LOG_LEVEL log_level, char *format, ...) {
 
   va_end(args);
 
-#if defined(_DEBUG) &&                                                         \
-    !defined(_TESSERACT_UNIT_TESTS) // TODO: Get rid of tesserat legacy code
+#if defined(_DEBUG)
   if (log_level == LOG_LEVEL_FATAL ||
       log_level == LOG_LEVEL_ERROR) /* breakpoint()*/
     ;
